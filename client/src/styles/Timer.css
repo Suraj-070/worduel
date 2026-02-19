@@ -1,0 +1,37 @@
+.timer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.timer__display {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  letter-spacing: 0.05em;
+  color: var(--text);
+  transition: color 0.3s;
+}
+
+.timer--warning .timer__display { color: var(--yellow); }
+.timer--urgent  .timer__display { color: var(--accent2); animation: pulse 0.5s ease infinite alternate; }
+
+@keyframes pulse { from { opacity: 1; } to { opacity: 0.6; } }
+
+.timer__bar {
+  width: 120px;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.timer__fill {
+  height: 100%;
+  background: var(--green);
+  border-radius: 2px;
+  transition: width 1s linear, background 0.3s;
+}
+
+.timer--warning .timer__fill { background: var(--yellow); }
+.timer--urgent  .timer__fill { background: var(--accent2); }

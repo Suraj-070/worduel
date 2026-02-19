@@ -1,0 +1,67 @@
+.guess-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.guess-row {
+  display: flex;
+  gap: 6px;
+}
+
+.guess-row--submitted .tile {
+  animation: flip 0.5s ease forwards;
+  animation-fill-mode: both;
+}
+
+@keyframes flip {
+  0%   { transform: rotateX(0deg); }
+  50%  { transform: rotateX(-90deg); }
+  100% { transform: rotateX(0deg); }
+}
+
+.tile--input {
+  border-color: var(--border);
+  background: var(--surface);
+  width: 48px;
+  height: 48px;
+  font-size: 1.5rem;
+}
+
+.tile--filled {
+  border-color: var(--text-muted);
+  animation: bump 0.1s ease;
+}
+
+@keyframes bump {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+.tile--shake { animation: shake 0.4s ease; }
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-6px); }
+  40%       { transform: translateX(6px); }
+  60%       { transform: translateX(-4px); }
+  80%       { transform: translateX(4px); }
+}
+
+.tile--correct { 
+  background: #4caf7d !important;  
+  border-color: #4caf7d !important;  
+  color: #fff !important; 
+}
+.tile--present { 
+  background: #e8c547 !important; 
+  border-color: #e8c547 !important; 
+  color: #000 !important; 
+}
+.tile--absent  { 
+  background: #2a2a2a !important;       
+  border-color: #2a2a2a !important;       
+  color: #888 !important; 
+}
+.tile--empty   { border-color: var(--border); background: transparent; }

@@ -1,0 +1,54 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+:root {
+  --bg:         #0d0d0d;
+  --surface:    #1a1a1a;
+  --border:     #2a2a2a;
+  --text:       #f0ede8;
+  --text-muted: #666;
+  --accent:     #1a4aff;
+  --accent2:    #ff4757;
+  --green:      #4caf7d;
+  --yellow:     #1a4aff;
+  --dark-tile:  #2a2a2a;
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-mono:    'Space Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  border-radius: 4px;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  user-select: none;
+}
+
+.tile.green  { background: var(--green);  border-color: var(--green);  color: #fff; }
+.tile.yellow { background: #e8c547; border-color: #e8c547; color: #000; }
+.tile.dark   { background: var(--dark-tile); border-color: var(--dark-tile); color: var(--text-muted); }
+
+button { cursor: pointer; font-family: var(--font-mono); }
+input  { font-family: var(--font-mono); }

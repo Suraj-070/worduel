@@ -1,0 +1,42 @@
+.waiting {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  background: var(--bg);
+}
+
+.waiting__spinner {
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+
+.waiting__ring {
+  position: absolute;
+  inset: 0;
+  border: 3px solid transparent;
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.waiting__ring--2 {
+  inset: 12px;
+  border-top-color: var(--accent2);
+  animation-duration: 0.7s;
+  animation-direction: reverse;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.waiting__title {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  letter-spacing: 0.1em;
+  color: var(--text);
+}
+
+.waiting__sub { color: var(--text-muted); font-size: 0.8rem; }
