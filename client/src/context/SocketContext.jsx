@@ -7,7 +7,7 @@ export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    const s = io("https://worduel-server-l2j1.onrender.com", { autoConnect: false });
+    const s = io("https://worduel-server-l2j1.onrender.com", { autoConnect: false, transports: ["websocket", "polling"], });
     setSocket(s);
     s.connect();
     return () => s.disconnect();
