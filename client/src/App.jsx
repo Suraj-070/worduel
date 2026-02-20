@@ -1,7 +1,8 @@
-import React from "react";
+import React, {useState} from "react";
 import { SocketProvider } from "./context/SocketContext";
 import { GameProvider, useGame } from "./context/GameContext";
 import { useGameSocket } from "./hooks/useGameSocket";
+import LoadingScreen from "./pages/LoadingScreen";
 import Home from "./pages/Home";
 import Waiting from "./pages/Waiting";
 import Countdown from "./pages/Countdown";
@@ -13,6 +14,11 @@ import "./styles/global.css";
 function AppScreens() {
   useGameSocket();
   const { state } = useGame();
+  const [loading, setLoading] = useState(true);
+
+  if (loading) {
+    return <LoadingScreen onFinish={() => setLoading(false)} />;
+  }
 
   switch (state.screen) {
     case "home":       return <Home />;

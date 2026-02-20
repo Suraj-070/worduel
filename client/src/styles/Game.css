@@ -101,3 +101,132 @@
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* Hint button */
+.game__hint-btn {
+  background: transparent;
+  border: 1px dashed #444;
+  color: #555;
+  padding: 0.5rem 1.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  transition: all 0.2s;
+  margin-top: 0.5rem;
+}
+
+.game__hint-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Hint revealed */
+.game__hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  padding: 0.6rem 1.2rem;
+  border: 1px dashed #1a4aff;
+  border-radius: 4px;
+  max-width: 500px;
+  text-align: center;
+  font-style: italic;
+  animation: fadeIn 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.game__hint-penalty {
+  color: var(--accent2);
+  font-size: 0.7rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+/* Warning popup */
+.hint-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  animation: fadeIn 0.2s ease;
+}
+
+.hint-popup {
+  background: var(--surface);
+  border: 1px solid #1a4aff;
+  border-radius: 8px;
+  padding: 2rem;
+  max-width: 340px;
+  width: 90%;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: 0 0 30px rgba(26, 74, 255, 0.3);
+  animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes popIn {
+  0%   { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+
+.hint-popup__icon { font-size: 2.5rem; }
+
+.hint-popup__title {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  color: var(--text);
+  letter-spacing: 0.05em;
+}
+
+.hint-popup__msg {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.hint-popup__msg strong { color: var(--accent2); }
+
+.hint-popup__actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.hint-popup__btn {
+  flex: 1;
+  padding: 0.8rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  transition: all 0.15s;
+}
+
+.hint-popup__btn--cancel {
+  background: transparent;
+  border: 2px solid var(--border);
+  color: var(--text-muted);
+}
+
+.hint-popup__btn--cancel:hover {
+  border-color: var(--text-muted);
+  color: var(--text);
+}
+
+.hint-popup__btn--confirm {
+  background: #1a4aff;
+  border: 2px solid #1a4aff;
+  color: #fff;
+}
+
+.hint-popup__btn--confirm:hover {
+  background: #0a3aff;
+  box-shadow: 0 0 15px rgba(26, 74, 255, 0.5);
+}

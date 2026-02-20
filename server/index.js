@@ -4,76 +4,89 @@ const { Server } = require("socket.io");
 const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
-const { createGameSession, processGuess, getShuffledLetters } = require("./gameLogic");
+const {
+  createGameSession,
+  processGuess,
+  getShuffledLetters,
+} = require("./gameLogic");
 
 const app = express();
-app.use(cors({
-  origin: "*",
-  methods: ["GET", "POST"],
-}));
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST"],
+  }),
+);
 app.use(express.json());
 
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { 
+  cors: {
     origin: "*",
     methods: ["GET", "POST"],
-    credentials: false
+    credentials: false,
   },
   transports: ["websocket", "polling"],
 });
 
 // ─── Wordlist ────────────────────────────────────────────────────────────────
-let wordList = [];      // words used for the game (balanced)
-let validWords = [];    // words used for guess validation (larger)
+let wordList = [];
+let validWords = new Set();
 
 function loadWordList() {
-  const filePath = path.join(__dirname, "wordlist.txt");
-  const validPath = path.join(__dirname, "validwords.txt");
+  const jsonPath = path.join(__dirname, "wordlist.json");
+  const txtPath = path.join(__dirname, "wordlist.txt");
 
-  if (fs.existsSync(filePath)) {
-    const content = fs.readFileSync(filePath, "utf-8");
+  if (fs.existsSync(jsonPath)) {
+    const content = fs.readFileSync(jsonPath, "utf-8");
+    const parsed = JSON.parse(content);
+
+    wordList = parsed.filter(
+      (w) =>
+        w.word &&
+        w.word.length >= 3 &&
+        w.word.length <= 6 &&
+        /^[a-z]+$/.test(w.word),
+    );
+
+    // Build valid words set from JSON wordlist
+    validWords = new Set(wordList.map((w) => w.word.toLowerCase()));
+    console.log(`✅ Loaded ${wordList.length} words from wordlist.json`);
+    console.log(`✅ Valid words set: ${validWords.size} words`);
+  } else if (fs.existsSync(txtPath)) {
+    const content = fs.readFileSync(txtPath, "utf-8");
     wordList = content
       .split("\n")
       .map((w) => w.trim().toLowerCase())
-      .filter((w) => w.length >= 3 && w.length <= 6 && /^[a-z]+$/.test(w));
-    console.log(`✅ Loaded ${wordList.length} game words`);
-  } else {
-    console.warn("⚠️ wordlist.txt not found!");
-  }
+      .filter((w) => w.length >= 3 && w.length <= 6 && /^[a-z]+$/.test(w))
+      .map((w) => ({ word: w, hint: null }));
 
-  if (fs.existsSync(validPath)) {
-    const content = fs.readFileSync(validPath, "utf-8");
-    validWords = content
-      .split("\n")
-      .map((w) => w.trim().toLowerCase())
-      .filter((w) => w.length >= 3 && w.length <= 6 && /^[a-z]+$/.test(w));
-    console.log(`✅ Loaded ${validWords.length} valid words for validation`);
+    validWords = new Set(wordList.map((w) => w.word));
+    console.log(`✅ Loaded ${wordList.length} words from wordlist.txt`);
   } else {
-    // Fallback — just use the game wordlist for validation
-    validWords = wordList;
-    console.warn("⚠️ validwords.txt not found, using game wordlist for validation");
+    console.warn("⚠️ No wordlist found!");
+    wordList = [];
+    validWords = new Set();
   }
 }
 
 loadWordList();
 
-const ROUND_WORD_LENGTH = {
-  1: 3,
-  2: 4,
-  3: 4,
-  4: 5,
-  5: 6,
-  6: 6,
+const ROUND_CONFIG = {
+  1: { length: 3, time: 127 }, // 2 min 7 sec
+  2: { length: 4, time: 186 }, // 3 min 6 sec
+  3: { length: 5, time: 304 }, // 5 min 4 sec
+  4: { length: 5, time: 304 }, // 5 min 4 sec
+  5: { length: 6, time: 369 }, // 6 min 9 sec
+  6: { length: 6, time: 369 }, // 6 min 9 sec
 };
 
 function getRandomWord(round) {
-  const targetLength = ROUND_WORD_LENGTH[round] || 4;
-  const filtered = wordList.filter((w) => w.length === targetLength);
+  const config = ROUND_CONFIG[round] || { length: 4, time: 186 };
+  const filtered = wordList.filter((w) => w.word.length === config.length);
 
-  // Fallback in case no words found for that length
   if (filtered.length === 0) {
-    console.warn(`⚠️ No words found for length ${targetLength}, using any word`);
+    console.warn(`⚠️ No words found for length ${config.length}`);
     return wordList[Math.floor(Math.random() * wordList.length)];
   }
 
@@ -100,15 +113,23 @@ function createRoom(player1, player2) {
 }
 
 function startRound(room) {
-  const word = getRandomWord(room.currentRound);
-  if (!word) {
-    console.error("❌ Could not find a word! Check your wordlist.txt");
+  const config = ROUND_CONFIG[room.currentRound] || { length: 4, time: 186 };
+  const entry = getRandomWord(room.currentRound);
+
+  if (!entry || !entry.word) {
+    console.error("❌ Could not find a word!");
     return;
   }
+
+  const word = entry.word;
+  const hint = entry.hint || null;
   const shuffled = getShuffledLetters(word);
+
   room.session.currentWord = word;
+  room.session.currentHint = hint;
   room.session.shuffledLetters = shuffled;
   room.session.roundStartTime = Date.now();
+  room.session.timeLimit = config.time;
   room.session.playerGuesses = {
     [room.players[0].id]: [],
     [room.players[1].id]: [],
@@ -117,8 +138,16 @@ function startRound(room) {
     [room.players[0].id]: false,
     [room.players[1].id]: false,
   };
+  room.session.hintUsed = {
+    [room.players[0].id]: false,
+    [room.players[1].id]: false,
+  };
   room.roundActive = true;
-  return { word, shuffled };
+
+  console.log(
+    `📖 Round ${room.currentRound}: "${word}" | Time: ${config.time}s | Hint: "${hint}"`,
+  );
+  return { word, hint, shuffled, timeLimit: config.time };
 }
 
 // ─── Socket Events ────────────────────────────────────────────────────────────
@@ -132,7 +161,7 @@ io.on("connection", (socket) => {
       const opponent = waitingRoom.players.shift();
       const room = createRoom(
         { id: opponent.id, username: opponent.username },
-        { id: socket.id, username: socket.username }
+        { id: socket.id, username: socket.username },
       );
 
       socket.join(room.id);
@@ -145,12 +174,13 @@ io.on("connection", (socket) => {
       });
 
       setTimeout(() => {
-        const { word, shuffled } = startRound(room);
+        const { word, hint, shuffled, timeLimit } = startRound(room);
         io.to(room.id).emit("round_start", {
           round: room.currentRound,
           shuffledLetters: shuffled,
           wordLength: word.length,
-          timeLimit: 369,
+          timeLimit: timeLimit,
+          hint: hint,
         });
       }, 3000);
     } else {
@@ -171,13 +201,12 @@ io.on("connection", (socket) => {
     if (room.session.roundFinished[playerId]) return;
 
     // Validate guess is a real word
-if (!wordList.includes(guess.toLowerCase())) {
-  socket.emit("invalid_word", { guess });
-  return;
-}
-
-const result = processGuess(guess.toLowerCase(), currentWord);
-guesses.push({ guess: guess.toLowerCase(), result });
+    if (!validWords.has(guess.toLowerCase())) {
+      socket.emit("invalid_word", { guess });
+      return;
+    }
+    const result = processGuess(guess.toLowerCase(), currentWord);
+    guesses.push({ guess: guess.toLowerCase(), result });
 
     const isCorrect = result.every((r) => r.status === "correct");
     const isLastGuess = guesses.length >= 4;
@@ -185,10 +214,15 @@ guesses.push({ guess: guess.toLowerCase(), result });
     let pointsEarned = 0;
     if (isCorrect) {
       const elapsed = (Date.now() - room.session.roundStartTime) / 1000;
-      if (elapsed <= 180)      pointsEarned = 3;
-      else if (elapsed <= 240) pointsEarned = 2;
-      else if (elapsed <= 300) pointsEarned = 2;
-      else if (elapsed <= 369) pointsEarned = 1;
+      const timeLimit = room.session.timeLimit;
+      const timeLeft = timeLimit - elapsed;
+      const pct = timeLeft / timeLimit;
+
+      if (pct >= 0.75) pointsEarned = 3;
+      else if (pct >= 0.5) pointsEarned = 2;
+      else if (pct >= 0.25) pointsEarned = 1;
+      else pointsEarned = 1;
+
       room.scores[playerId] += pointsEarned;
     }
 
@@ -231,6 +265,41 @@ guesses.push({ guess: guess.toLowerCase(), result });
       }
     }
   });
+
+  socket.on("request_hint", ({ roomId }) => {
+    const room = rooms[roomId];
+    if (!room) return;
+
+    const playerId = socket.id;
+
+    // Check if hint already used
+    if (room.session.hintUsed[playerId]) {
+      socket.emit("hint_already_used");
+      return;
+    }
+
+    // Mark hint as used
+    room.session.hintUsed[playerId] = true;
+
+    // Calculate penalty
+    const elapsed = (Date.now() - room.session.roundStartTime) / 1000;
+    const timeLeft = room.session.timeLimit - elapsed;
+    const penalty = timeLeft > 60 ? 1 : 0;
+
+    // Deduct penalty from score
+    if (penalty > 0) {
+      room.scores[playerId] = Math.max(
+        0,
+        (room.scores[playerId] || 0) - penalty,
+      );
+    }
+
+    socket.emit("hint_revealed", {
+      hint: room.session.currentHint,
+      penalty,
+      totalScore: room.scores[playerId],
+    });
+  });
 });
 
 function endRound(room, roomId) {
@@ -247,9 +316,11 @@ function endRound(room, roomId) {
   if (room.currentRound >= room.totalRounds) {
     const [p1, p2] = room.players;
     const winner =
-      room.scores[p1.id] > room.scores[p2.id] ? p1
-      : room.scores[p2.id] > room.scores[p1.id] ? p2
-      : null;
+      room.scores[p1.id] > room.scores[p2.id]
+        ? p1
+        : room.scores[p2.id] > room.scores[p1.id]
+          ? p2
+          : null;
 
     setTimeout(() => {
       io.to(roomId).emit("session_end", {
@@ -262,18 +333,21 @@ function endRound(room, roomId) {
   } else {
     room.currentRound++;
     setTimeout(() => {
-      const { word, shuffled } = startRound(room);
+      const { word, hint, shuffled, timeLimit } = startRound(room);
       io.to(roomId).emit("round_start", {
         round: room.currentRound,
         shuffledLetters: shuffled,
         wordLength: word.length,
-        timeLimit: 369,
+        timeLimit: timeLimit,
+        hint: hint,
       });
     }, 5000);
   }
 }
 
-app.get("/health", (req, res) => res.json({ status: "ok", words: wordList.length }));
+app.get("/health", (req, res) =>
+  res.json({ status: "ok", words: wordList.length }),
+);
 
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

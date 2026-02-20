@@ -20,14 +20,22 @@ const initialState = {
   sessionWinner: null,
   lastPointsEarned: 0,
   invalidWord: false,
+  hint: null,
+  hintRevealed: false,
+  hintPenalty: 0,
+  timeLimit: 127,
 };
 
 function reducer(state, action) {
   switch (action.type) {
-    case "SET_USERNAME":   return { ...state, username: action.payload };
-    case "SET_MY_ID":      return { ...state, myId: action.payload };
-    case "SET_SCREEN":     return { ...state, screen: action.payload };
-    case "WAITING":        return { ...state, screen: "waiting" };
+    case "SET_USERNAME":
+      return { ...state, username: action.payload };
+    case "SET_MY_ID":
+      return { ...state, myId: action.payload };
+    case "SET_SCREEN":
+      return { ...state, screen: action.payload };
+    case "WAITING":
+      return { ...state, screen: "waiting" };
     case "MATCH_FOUND":
       return {
         ...state,
@@ -35,7 +43,10 @@ function reducer(state, action) {
         roomId: action.payload.roomId,
         players: action.payload.players,
         totalRounds: action.payload.totalRounds,
-        scores: action.payload.players.reduce((acc, p) => ({ ...acc, [p.id]: 0 }), {}),
+        scores: action.payload.players.reduce(
+          (acc, p) => ({ ...acc, [p.id]: 0 }),
+          {},
+        ),
       };
     case "ROUND_START":
       return {
@@ -45,22 +56,39 @@ function reducer(state, action) {
         shuffledLetters: action.payload.shuffledLetters,
         wordLength: action.payload.wordLength,
         timeLimit: action.payload.timeLimit,
+        hint: action.payload.hint,
+        hintRevealed: false,
+        hintPenalty: 0,
         guesses: [],
         opponentGuessCount: 0,
         roundWord: null,
         lastPointsEarned: 0,
       };
+
+    case "HINT_REVEALED":
+      return {
+        ...state,
+        hintRevealed: true,
+        hintPenalty: action.payload.penalty,
+        scores: { ...state.scores, [state.myId]: action.payload.totalScore },
+      };
+    case "HINT_ALREADY_USED":
+      return { ...state };
+
     case "GUESS_RESULT":
       return {
         ...state,
-        guesses: [...state.guesses, { guess: action.payload.guess, result: action.payload.result }],
+        guesses: [
+          ...state.guesses,
+          { guess: action.payload.guess, result: action.payload.result },
+        ],
         scores: { ...state.scores, [state.myId]: action.payload.totalScore },
         lastPointsEarned: action.payload.pointsEarned,
       };
-      case "INVALID_WORD":
-  return { ...state, invalidWord: true };
-case "CLEAR_INVALID":
-  return { ...state, invalidWord: false };
+    case "INVALID_WORD":
+      return { ...state, invalidWord: true };
+    case "CLEAR_INVALID":
+      return { ...state, invalidWord: false };
     case "OPPONENT_GUESSED":
       return { ...state, opponentGuessCount: action.payload.guessNumber };
     case "ROUND_END":

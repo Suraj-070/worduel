@@ -20,8 +20,8 @@ export default function Home() {
       <div className="home__content">
         <div className="home__badge">MULTIPLAYER WORD BATTLE</div>
         <h1 className="home__title">
-          <span className="home__title-word">WOR</span>
-          <span className="home__title-duel">DUEL</span>
+          <span className="home__title-word">WORDS</span>
+          <span className="home__title-duel">TRIKE</span>
         </h1>
         <p className="home__sub">
           6 rounds. 4 tries. 6 minutes 9 seconds.<br />
@@ -57,7 +57,7 @@ export default function Home() {
         </div>
       </div>
       <footer className="home__footer">
-       <span className="home__footer-copy">©</span> 2026 WORDUEL — THINK FAST. GUESS FASTER.
+       <span className="home__footer-copy">©</span> 2026 WORDSTRIKE — THINK FAST. GUESS FASTER.
       </footer>
     </div>
   );

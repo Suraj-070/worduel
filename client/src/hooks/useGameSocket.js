@@ -25,6 +25,14 @@ export function useGameSocket() {
       dispatch({ type: "ROUND_START", payload: data });
     });
 
+    socket.on("hint_revealed", (data) => {
+      dispatch({ type: "HINT_REVEALED", payload: data });
+    });
+
+    socket.on("hint_already_used", () => {
+      dispatch({ type: "HINT_ALREADY_USED" });
+    });
+
     socket.on("guess_result", (data) => {
       dispatch({ type: "GUESS_RESULT", payload: data });
     });
@@ -47,8 +55,8 @@ export function useGameSocket() {
     });
 
     socket.on("invalid_word", (data) => {
-  dispatch({ type: "INVALID_WORD" });
-});
+      dispatch({ type: "INVALID_WORD" });
+    });
 
     return () => {
       socket.off("connect");
@@ -61,6 +69,8 @@ export function useGameSocket() {
       socket.off("session_end");
       socket.off("opponent_disconnected");
       socket.off("invalid_word");
+      socket.off("hint_revealed");
+      socket.off("hint_already_used");
     };
   }, [socket, dispatch]);
 }
