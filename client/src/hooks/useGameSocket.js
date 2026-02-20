@@ -51,11 +51,11 @@ export function useGameSocket() {
     });
 
     socket.on("opponent_guessed", (data) => {
-  dispatch({ type: "OPPONENT_GUESSED", payload: data });
-  if (data.isCorrect && data.scores) {
-    dispatch({ type: "UPDATE_SCORES", payload: { scores: data.scores } });
-  }
-});
+      dispatch({ type: "OPPONENT_GUESSED", payload: data });
+      if (data.isCorrect && data.scores) {
+        dispatch({ type: "UPDATE_SCORES", payload: { scores: data.scores } });
+      }
+    });
 
     socket.on("round_end", (data) => {
       dispatch({ type: "ROUND_END", payload: data });
@@ -68,6 +68,36 @@ export function useGameSocket() {
     socket.on("opponent_disconnected", () => {
       alert("Your opponent disconnected.");
       dispatch({ type: "RESET" });
+    });
+
+    // Opponent temporarily disconnected
+    socket.on("opponent_disconnected_temp", (data) => {
+      dispatch({ type: "OPPONENT_DISCONNECTED_TEMP", payload: data });
+    });
+
+    // Reconnect countdown
+    socket.on("reconnect_countdown", (data) => {
+      dispatch({ type: "RECONNECT_COUNTDOWN", payload: data });
+    });
+
+    // Opponent reconnected
+    socket.on("opponent_reconnected", (data) => {
+      dispatch({ type: "OPPONENT_RECONNECTED", payload: data });
+    });
+
+    // Opponent forfeited
+    socket.on("opponent_forfeited", (data) => {
+      dispatch({ type: "OPPONENT_FORFEITED", payload: data });
+    });
+
+    // Rejoin success
+    socket.on("rejoin_success", (data) => {
+      dispatch({ type: "REJOIN_SUCCESS", payload: data });
+    });
+
+    // Rejoin failed
+    socket.on("rejoin_failed", (data) => {
+      dispatch({ type: "REJOIN_FAILED", payload: data });
     });
 
     socket.on("invalid_word", (data) => {
@@ -87,6 +117,12 @@ export function useGameSocket() {
       socket.off("invalid_word");
       socket.off("hint_revealed");
       socket.off("hint_already_used");
+      socket.off("opponent_disconnected_temp");
+      socket.off("reconnect_countdown");
+      socket.off("opponent_reconnected");
+      socket.off("opponent_forfeited");
+      socket.off("rejoin_success");
+      socket.off("rejoin_failed");
     };
   }, [socket, dispatch]);
 }

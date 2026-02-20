@@ -36,7 +36,7 @@ function loadWordList() {
         w.word &&
         w.word.length >= 3 &&
         w.word.length <= 6 &&
-        /^[a-z]+$/.test(w.word)
+        /^[a-z]+$/.test(w.word),
     );
     validWords = new Set(wordList.map((w) => w.word.toLowerCase()));
     console.log(`✅ Loaded ${wordList.length} words from wordlist.json`);
@@ -81,9 +81,11 @@ function calculatePoints(room, playerId, guessNumber) {
 
   // Base points by time remaining percentage
   let basePoints = 0;
-  if (pct >= 0.5)      basePoints = maxPoints;           // fast
-  else if (pct >= 0.1) basePoints = Math.max(1, Math.floor(maxPoints * 0.6)); // medium
-  else                 basePoints = Math.max(1, Math.floor(maxPoints * 0.3)); // slow
+  if (pct >= 0.5)
+    basePoints = maxPoints; // fast
+  else if (pct >= 0.1)
+    basePoints = Math.max(1, Math.floor(maxPoints * 0.6)); // medium
+  else basePoints = Math.max(1, Math.floor(maxPoints * 0.3)); // slow
 
   // Bonus points
   let bonus = 0;
@@ -112,7 +114,7 @@ function calculatePoints(room, playerId, guessNumber) {
 
   const total = basePoints + bonus;
   console.log(
-    `🏆 Round ${round} | Player: ${playerId.slice(0, 4)} | Base: ${basePoints} | Bonus: ${bonus} | Total: ${total}`
+    `🏆 Round ${round} | Player: ${playerId.slice(0, 4)} | Base: ${basePoints} | Bonus: ${bonus} | Total: ${total}`,
   );
 
   return { basePoints, bonus, total, bonuses };
@@ -182,7 +184,7 @@ function startRound(room) {
   room.roundActive = true;
 
   console.log(
-    `📖 Round ${room.currentRound}: "${word}" | Time: ${config.time}s | Hint: "${hint}"`
+    `📖 Round ${room.currentRound}: "${word}" | Time: ${config.time}s | Hint: "${hint}"`,
   );
   return { word, hint, shuffled, timeLimit: config.time };
 }
@@ -198,7 +200,7 @@ io.on("connection", (socket) => {
       const opponent = waitingRoom.players.shift();
       const room = createRoom(
         { id: opponent.id, username: opponent.username },
-        { id: socket.id, username: socket.username }
+        { id: socket.id, username: socket.username },
       );
 
       socket.join(room.id);
@@ -256,7 +258,7 @@ io.on("connection", (socket) => {
       const { total, bonuses: earnedBonuses } = calculatePoints(
         room,
         playerId,
-        guesses.length
+        guesses.length,
       );
       pointsEarned = total;
       bonuses = earnedBonuses;
@@ -327,7 +329,7 @@ io.on("connection", (socket) => {
     if (penalty > 0) {
       room.scores[playerId] = Math.max(
         0,
-        (room.scores[playerId] || 0) - penalty
+        (room.scores[playerId] || 0) - penalty,
       );
     }
 
@@ -338,13 +340,131 @@ io.on("connection", (socket) => {
     });
   });
 
+  socket.on("rejoin_room", ({ roomId, username }) => {
+    const room = rooms[roomId];
+    if (!room) {
+      socket.emit("rejoin_failed", { message: "Room no longer exists!" });
+      return;
+    }
+
+    // Find the disconnected player slot
+    const playerIndex = room.players.findIndex((p) => p.username === username);
+
+    if (playerIndex === -1) {
+      socket.emit("rejoin_failed", { message: "Player not found in room!" });
+      return;
+    }
+
+    const oldId = room.players[playerIndex].id;
+
+    // Update player ID to new socket ID
+    room.players[playerIndex].id = socket.id;
+
+    // Update all session references to old ID
+    if (room.scores[oldId] !== undefined) {
+      room.scores[socket.id] = room.scores[oldId];
+      delete room.scores[oldId];
+    }
+    if (room.streaks?.[oldId] !== undefined) {
+      room.streaks[socket.id] = room.streaks[oldId];
+      delete room.streaks[oldId];
+    }
+    if (room.session.playerGuesses?.[oldId]) {
+      room.session.playerGuesses[socket.id] = room.session.playerGuesses[oldId];
+      delete room.session.playerGuesses[oldId];
+    }
+    if (room.session.roundFinished?.[oldId] !== undefined) {
+      room.session.roundFinished[socket.id] = room.session.roundFinished[oldId];
+      delete room.session.roundFinished[oldId];
+    }
+    if (room.session.hintUsed?.[oldId] !== undefined) {
+      room.session.hintUsed[socket.id] = room.session.hintUsed[oldId];
+      delete room.session.hintUsed[oldId];
+    }
+
+    // Clear disconnected flag
+    if (room.disconnected) delete room.disconnected[oldId];
+
+    // Clear grace period timer
+    if (room.gracePeriodTimer) {
+      clearTimeout(room.gracePeriodTimer);
+      room.gracePeriodTimer = null;
+    }
+
+    // Rejoin the socket room
+    socket.join(roomId);
+    socket.username = username;
+
+    console.log(`✅ Player ${username} rejoined room ${roomId}`);
+
+    // Send full game state back to rejoining player
+    socket.emit("rejoin_success", {
+      roomId,
+      round: room.currentRound,
+      totalRounds: room.totalRounds,
+      players: room.players,
+      scores: room.scores,
+      shuffledLetters: room.session.shuffledLetters,
+      wordLength: room.session.currentWord?.length,
+      timeLimit: room.session.timeLimit,
+      hint: room.session.currentHint,
+      guesses: room.session.playerGuesses[socket.id] || [],
+      roundStartTime: room.session.roundStartTime,
+    });
+
+    // Notify opponent
+    socket.to(roomId).emit("opponent_reconnected", {
+      message: "✅ Opponent reconnected — game continues!",
+    });
+  });
+
   socket.on("disconnect", () => {
     console.log(`❌ Disconnected: ${socket.id}`);
     waitingRoom.players = waitingRoom.players.filter((p) => p.id !== socket.id);
+
     for (const [roomId, room] of Object.entries(rooms)) {
-      if (room.players.find((p) => p.id === socket.id)) {
-        io.to(roomId).emit("opponent_disconnected");
-        delete rooms[roomId];
+      const playerIndex = room.players.findIndex((p) => p.id === socket.id);
+      if (playerIndex !== -1) {
+        console.log(
+          `⏳ Player ${socket.id.slice(0, 4)} disconnected — starting 30s grace period`,
+        );
+
+        // Mark player as disconnected but don't delete room yet
+        room.disconnected = room.disconnected || {};
+        room.disconnected[socket.id] = true;
+
+        // Notify opponent
+        io.to(roomId).emit("opponent_disconnected_temp", {
+          message:
+            "⚠️ Opponent disconnected — waiting 30 seconds for them to reconnect...",
+          grace: 30,
+        });
+
+        // Start grace period countdown
+        let countdown = 30;
+        const countdownInterval = setInterval(() => {
+          countdown--;
+          io.to(roomId).emit("reconnect_countdown", { seconds: countdown });
+          if (countdown <= 0) clearInterval(countdownInterval);
+        }, 1000);
+
+        // Grace period timer — 30 seconds
+        room.gracePeriodTimer = setTimeout(() => {
+          clearInterval(countdownInterval);
+          // If player still hasn't rejoined delete the room
+          if (room.disconnected?.[socket.id]) {
+            console.log(`💀 Grace period expired — ending game`);
+            // Find the remaining player as winner
+            const winner = room.players.find((p) => p.id !== socket.id);
+            io.to(roomId).emit("opponent_forfeited", {
+              winner,
+              message: "🏆 Opponent failed to reconnect — You Win!",
+            });
+            delete rooms[roomId];
+          }
+        }, 30000);
+
+        break;
       }
     }
   });
@@ -396,7 +516,7 @@ function endRound(room, roomId) {
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
 app.get("/health", (req, res) =>
-  res.json({ status: "ok", words: wordList.length })
+  res.json({ status: "ok", words: wordList.length }),
 );
 
 const PORT = process.env.PORT || 4000;

@@ -24,6 +24,9 @@ const initialState = {
   hintRevealed: false,
   hintPenalty: 0,
   timeLimit: 127,
+  opponentDisconnected: false,
+  reconnectCountdown: null,
+  rejoinFailed: false,
 };
 
 function reducer(state, action) {
@@ -103,6 +106,59 @@ function reducer(state, action) {
         screen: "roundEnd",
         roundWord: action.payload.word,
         scores: action.payload.scores,
+      };
+
+    case "OPPONENT_DISCONNECTED_TEMP":
+      return {
+        ...state,
+        opponentDisconnected: true,
+        reconnectCountdown: 30,
+      };
+
+    case "RECONNECT_COUNTDOWN":
+      return {
+        ...state,
+        reconnectCountdown: action.payload.seconds,
+      };
+
+    case "OPPONENT_RECONNECTED":
+      return {
+        ...state,
+        opponentDisconnected: false,
+        reconnectCountdown: null,
+      };
+
+    case "OPPONENT_FORFEITED":
+      return {
+        ...state,
+        screen: "sessionEnd",
+        sessionWinner: action.payload.winner,
+        opponentDisconnected: false,
+      };
+
+    case "REJOIN_SUCCESS":
+      return {
+        ...state,
+        screen: "game",
+        roomId: action.payload.roomId,
+        currentRound: action.payload.round,
+        totalRounds: action.payload.totalRounds,
+        players: action.payload.players,
+        scores: action.payload.scores,
+        shuffledLetters: action.payload.shuffledLetters,
+        wordLength: action.payload.wordLength,
+        timeLimit: action.payload.timeLimit,
+        hint: action.payload.hint,
+        guesses: action.payload.guesses,
+        opponentDisconnected: false,
+        reconnectCountdown: null,
+      };
+
+    case "REJOIN_FAILED":
+      return {
+        ...state,
+        screen: "home",
+        opponentDisconnected: false,
       };
     case "SESSION_END":
       return {

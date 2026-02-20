@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useSocket } from "../context/SocketContext";
 import { useGame } from "../context/GameContext";
 import "../styles/Home.css";
@@ -8,8 +8,26 @@ export default function Home() {
   const { state, dispatch } = useGame();
   const [name, setName] = useState("");
 
+  useEffect(() => {
+    // Check if player was in a game before refresh
+    const savedRoomId = sessionStorage.getItem("roomId");
+    const savedUsername = sessionStorage.getItem("username");
+
+    if (savedRoomId && savedUsername) {
+      console.log("🔄 Attempting to rejoin room...");
+      socket.connect();
+      socket.emit("rejoin_room", {
+        roomId: savedRoomId,
+        username: savedUsername,
+      });
+      // Clear saved room after attempt
+      sessionStorage.removeItem("roomId");
+    }
+  }, []);
+
   const handlePlay = () => {
-    const username = name.trim() || `Player_${Math.floor(Math.random() * 9999)}`;
+    const username =
+      name.trim() || `Player_${Math.floor(Math.random() * 9999)}`;
     dispatch({ type: "SET_USERNAME", payload: username });
     socket.emit("find_match", { username });
   };
@@ -24,7 +42,8 @@ export default function Home() {
           <span className="home__title-duel">TRIKE</span>
         </h1>
         <p className="home__sub">
-          6 rounds. 4 tries. 6 minutes 9 seconds.<br />
+          6 rounds. 4 tries. 6 minutes 9 seconds.
+          <br />
           Unscramble the word before your opponent does.
         </p>
         <div className="home__form">
@@ -57,7 +76,8 @@ export default function Home() {
         </div>
       </div>
       <footer className="home__footer">
-       <span className="home__footer-copy">©</span> 2026 WORDSTRIKE — THINK FAST. GUESS FASTER.
+        <span className="home__footer-copy">©</span> 2026 WORDSTRIKE — THINK
+        FAST. GUESS FASTER.
       </footer>
     </div>
   );

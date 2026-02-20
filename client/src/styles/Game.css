@@ -230,3 +230,17 @@
   background: #0a3aff;
   box-shadow: 0 0 15px rgba(26, 74, 255, 0.5);
 }
+
+.game__disconnect-banner {
+  background: rgba(255, 100, 0, 0.15);
+  border: 1px solid #ff6400;
+  color: #ff6400;
+  padding: 0.6rem 1.2rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  text-align: center;
+  animation: fadeIn 0.3s ease;
+  width: 100%;
+  max-width: 500px;
+}

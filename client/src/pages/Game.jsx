@@ -48,7 +48,6 @@ export default function Game() {
     invalidWord,
   } = state;
 
-  
   const opponent = state.players.find((p) => p.id !== state.myId);
   const me = state.players.find((p) => p.id === state.myId);
 
@@ -103,6 +102,19 @@ export default function Game() {
     }
   }, [guesses.length, roundDone]);
 
+  // Warn before refresh/close during active game
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (!roundDone) {
+        e.preventDefault();
+        e.returnValue = "Leaving will forfeit the match! Are you sure?";
+        return e.returnValue;
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [roundDone]);
+
   // Reset round start time when new round begins
   useEffect(() => {
     roundStartRef.current = Date.now();
@@ -131,6 +143,22 @@ export default function Game() {
       setRoundDone(true);
     }
   }, [guesses]);
+
+  // Save room info for rejoin
+  useEffect(() => {
+    if (roomId) {
+      sessionStorage.setItem("roomId", roomId);
+      sessionStorage.setItem("username", me?.username || "");
+    }
+  }, [roomId, me]);
+
+  // Clear room info when game ends normally
+  useEffect(() => {
+    if (state.screen === "sessionEnd") {
+      sessionStorage.removeItem("roomId");
+      sessionStorage.removeItem("username");
+    }
+  }, [state.screen]);
 
   const submitGuess = useCallback(() => {
     if (currentInput.length !== wordLength) {
@@ -209,7 +237,6 @@ export default function Game() {
     }
   }, [roundDone, socket, roomId]);
 
-
   return (
     <div className="game">
       <ScoreBar
@@ -220,6 +247,14 @@ export default function Game() {
         totalRounds={totalRounds}
         opponentGuessCount={state.opponentGuessCount}
       />
+
+      {/* Opponent disconnected banner */}
+      {state.opponentDisconnected && (
+        <div className="game__disconnect-banner">
+          ⚠️ Opponent disconnected — reconnecting in{" "}
+          <strong>{state.reconnectCountdown}s</strong>...
+        </div>
+      )}
 
       <div className="game__header">
         <div className="game__round-badge">
