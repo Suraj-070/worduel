@@ -6,6 +6,13 @@ import LetterPool from "../components/LetterPool";
 import Timer from "../components/Timer";
 import ScoreBar from "../components/ScoreBar";
 import "../styles/Game.css";
+import {
+  FireStreak,
+  SpeedDemon,
+  FirstTryCrown,
+  ComebackKing,
+  LastGuessTension,
+} from "../components/Animations";
 
 const MAX_GUESSES = 4;
 
@@ -17,6 +24,12 @@ export default function Game() {
   const [roundDone, setRoundDone] = useState(false);
   const [timeUp, setTimeUp] = useState(false);
   const [showHintWarning, setShowHintWarning] = useState(false);
+  const [showFireStreak, setShowFireStreak] = useState(false);
+  const [showSpeedDemon, setShowSpeedDemon] = useState(false);
+  const [showFirstTry, setShowFirstTry] = useState(false);
+  const [showComeback, setShowComeback] = useState(false);
+  const [showTension, setShowTension] = useState(false);
+  const [currentStreak, setCurrentStreak] = useState(0);
 
   // Track round start time using ref — no extra interval needed
   const roundStartRef = useRef(Date.now());
@@ -34,6 +47,61 @@ export default function Game() {
     hintPenalty,
     invalidWord,
   } = state;
+
+  
+  const opponent = state.players.find((p) => p.id !== state.myId);
+  const me = state.players.find((p) => p.id === state.myId);
+
+  useEffect(() => {
+    const handleCorrect = (e) => {
+      const { guessNumber, bonuses } = e.detail;
+      const elapsed = (Date.now() - roundStartRef.current) / 1000;
+      const myScore = state.scores[state.myId] || 0;
+      const opponentScore = state.scores[opponent?.id] || 0;
+
+      // First try crown
+      if (guessNumber === 1) {
+        setShowFirstTry(true);
+        setTimeout(() => setShowFirstTry(false), 2500);
+        return;
+      }
+
+      // Speed demon — under 30 seconds
+      if (elapsed < 30) {
+        setShowSpeedDemon(true);
+        setTimeout(() => setShowSpeedDemon(false), 2000);
+        return;
+      }
+
+      // Comeback king — winning while behind by 5+
+      if (opponentScore - myScore >= 5) {
+        setShowComeback(true);
+        setTimeout(() => setShowComeback(false), 2500);
+        return;
+      }
+
+      // Win streak
+      if (bonuses?.some((b) => b.includes("streak"))) {
+        const streakBonus = bonuses.find((b) => b.includes("streak"));
+        const streakNum = parseInt(streakBonus?.match(/\d+/)?.[0] || "0");
+        setCurrentStreak(streakNum);
+        setShowFireStreak(true);
+        setTimeout(() => setShowFireStreak(false), 3000);
+      }
+    };
+
+    window.addEventListener("round_correct", handleCorrect);
+    return () => window.removeEventListener("round_correct", handleCorrect);
+  }, [state.scores, state.myId, opponent]);
+
+  // Last guess tension — 3rd guess and not done
+  useEffect(() => {
+    if (guesses.length === 3 && !roundDone) {
+      setShowTension(true);
+    } else {
+      setShowTension(false);
+    }
+  }, [guesses.length, roundDone]);
 
   // Reset round start time when new round begins
   useEffect(() => {
@@ -141,8 +209,6 @@ export default function Game() {
     }
   }, [roundDone, socket, roomId]);
 
-  const opponent = state.players.find((p) => p.id !== state.myId);
-  const me = state.players.find((p) => p.id === state.myId);
 
   return (
     <div className="game">
@@ -253,6 +319,12 @@ export default function Game() {
           </div>
         </div>
       )}
+      {/* Animations */}
+      <FireStreak streak={currentStreak} show={showFireStreak} />
+      <SpeedDemon show={showSpeedDemon} />
+      <FirstTryCrown show={showFirstTry} />
+      <ComebackKing show={showComeback} />
+      <LastGuessTension show={showTension} />
     </div>
   );
 }

@@ -35,6 +35,19 @@ export function useGameSocket() {
 
     socket.on("guess_result", (data) => {
       dispatch({ type: "GUESS_RESULT", payload: data });
+
+      if (data.isCorrect) {
+        // Fire custom event so Game.jsx can trigger animations
+        window.dispatchEvent(
+          new CustomEvent("round_correct", {
+            detail: {
+              guessNumber: data.guessNumber,
+              bonuses: data.bonuses || [],
+              pointsEarned: data.pointsEarned,
+            },
+          }),
+        );
+      }
     });
 
     socket.on("opponent_guessed", (data) => {

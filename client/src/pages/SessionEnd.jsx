@@ -1,6 +1,7 @@
 import React from "react";
 import { useGame } from "../context/GameContext";
 import "../styles/SessionEnd.css";
+import { SessionWinner } from "../components/Animations";
 
 export default function SessionEnd() {
   const { state, dispatch } = useGame();
@@ -33,6 +34,8 @@ export default function SessionEnd() {
       <button className="session-end__btn" onClick={() => dispatch({ type: "RESET" })}>
         PLAY AGAIN
       </button>
+
+      <SessionWinner winner={sessionWinner} me={me} />
     </div>
   );
 }

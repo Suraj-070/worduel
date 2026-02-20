@@ -11,21 +11,12 @@ const {
 } = require("./gameLogic");
 
 const app = express();
-app.use(
-  cors({
-    origin: "*",
-    methods: ["GET", "POST"],
-  }),
-);
+app.use(cors({ origin: "*", methods: ["GET", "POST"] }));
 app.use(express.json());
 
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-    credentials: false,
-  },
+  cors: { origin: "*", methods: ["GET", "POST"], credentials: false },
   transports: ["websocket", "polling"],
 });
 
@@ -40,16 +31,13 @@ function loadWordList() {
   if (fs.existsSync(jsonPath)) {
     const content = fs.readFileSync(jsonPath, "utf-8");
     const parsed = JSON.parse(content);
-
     wordList = parsed.filter(
       (w) =>
         w.word &&
         w.word.length >= 3 &&
         w.word.length <= 6 &&
-        /^[a-z]+$/.test(w.word),
+        /^[a-z]+$/.test(w.word)
     );
-
-    // Build valid words set from JSON wordlist
     validWords = new Set(wordList.map((w) => w.word.toLowerCase()));
     console.log(`✅ Loaded ${wordList.length} words from wordlist.json`);
     console.log(`✅ Valid words set: ${validWords.size} words`);
@@ -60,7 +48,6 @@ function loadWordList() {
       .map((w) => w.trim().toLowerCase())
       .filter((w) => w.length >= 3 && w.length <= 6 && /^[a-z]+$/.test(w))
       .map((w) => ({ word: w, hint: null }));
-
     validWords = new Set(wordList.map((w) => w.word));
     console.log(`✅ Loaded ${wordList.length} words from wordlist.txt`);
   } else {
@@ -72,28 +59,77 @@ function loadWordList() {
 
 loadWordList();
 
+// ─── Round Config ─────────────────────────────────────────────────────────────
 const ROUND_CONFIG = {
-  1: { length: 3, time: 127 }, // 2 min 7 sec
-  2: { length: 4, time: 186 }, // 3 min 6 sec
-  3: { length: 5, time: 304 }, // 5 min 4 sec
-  4: { length: 5, time: 304 }, // 5 min 4 sec
-  5: { length: 6, time: 369 }, // 6 min 9 sec
-  6: { length: 6, time: 369 }, // 6 min 9 sec
+  1: { length: 3, time: 127, maxPoints: 3 }, // 2 min 7 sec
+  2: { length: 4, time: 186, maxPoints: 4 }, // 3 min 6 sec
+  3: { length: 5, time: 304, maxPoints: 5 }, // 5 min 4 sec
+  4: { length: 5, time: 304, maxPoints: 5 }, // 5 min 4 sec
+  5: { length: 6, time: 369, maxPoints: 6 }, // 6 min 9 sec
+  6: { length: 6, time: 369, maxPoints: 6 }, // 6 min 9 sec
 };
 
+// ─── Points Calculator ────────────────────────────────────────────────────────
+function calculatePoints(room, playerId, guessNumber) {
+  const round = room.currentRound;
+  const config = ROUND_CONFIG[round] || { maxPoints: 3, time: 127 };
+  const maxPoints = config.maxPoints;
+  const timeLimit = room.session.timeLimit;
+  const elapsed = (Date.now() - room.session.roundStartTime) / 1000;
+  const timeLeft = timeLimit - elapsed;
+  const pct = timeLeft / timeLimit;
+
+  // Base points by time remaining percentage
+  let basePoints = 0;
+  if (pct >= 0.5)      basePoints = maxPoints;           // fast
+  else if (pct >= 0.1) basePoints = Math.max(1, Math.floor(maxPoints * 0.6)); // medium
+  else                 basePoints = Math.max(1, Math.floor(maxPoints * 0.3)); // slow
+
+  // Bonus points
+  let bonus = 0;
+  const bonuses = [];
+
+  // First try bonus
+  if (guessNumber === 1) {
+    bonus += 2;
+    bonuses.push("⚡ First try! +2");
+  }
+
+  // No hint bonus
+  const hintUsed = room.session.hintUsed[playerId] || false;
+  if (!hintUsed) {
+    bonus += 1;
+    bonuses.push("💡 No hint! +1");
+  }
+
+  // Win streak bonus
+  if (!room.streaks) room.streaks = {};
+  const streak = room.streaks[playerId] || 0;
+  if (streak >= 2) {
+    bonus += 1;
+    bonuses.push(`🔥 ${streak} round streak! +1`);
+  }
+
+  const total = basePoints + bonus;
+  console.log(
+    `🏆 Round ${round} | Player: ${playerId.slice(0, 4)} | Base: ${basePoints} | Bonus: ${bonus} | Total: ${total}`
+  );
+
+  return { basePoints, bonus, total, bonuses };
+}
+
+// ─── Word Picker ──────────────────────────────────────────────────────────────
 function getRandomWord(round) {
   const config = ROUND_CONFIG[round] || { length: 4, time: 186 };
   const filtered = wordList.filter((w) => w.word.length === config.length);
-
   if (filtered.length === 0) {
     console.warn(`⚠️ No words found for length ${config.length}`);
     return wordList[Math.floor(Math.random() * wordList.length)];
   }
-
   return filtered[Math.floor(Math.random() * filtered.length)];
 }
 
-// ─── Rooms ───────────────────────────────────────────────────────────────────
+// ─── Rooms ────────────────────────────────────────────────────────────────────
 const rooms = {};
 const waitingRoom = { players: [] };
 
@@ -107,6 +143,7 @@ function createRoom(player1, player2) {
     currentRound: 1,
     totalRounds: 6,
     scores: { [player1.id]: 0, [player2.id]: 0 },
+    streaks: { [player1.id]: 0, [player2.id]: 0 },
     roundActive: false,
   };
   return rooms[roomId];
@@ -145,7 +182,7 @@ function startRound(room) {
   room.roundActive = true;
 
   console.log(
-    `📖 Round ${room.currentRound}: "${word}" | Time: ${config.time}s | Hint: "${hint}"`,
+    `📖 Round ${room.currentRound}: "${word}" | Time: ${config.time}s | Hint: "${hint}"`
   );
   return { word, hint, shuffled, timeLimit: config.time };
 }
@@ -161,7 +198,7 @@ io.on("connection", (socket) => {
       const opponent = waitingRoom.players.shift();
       const room = createRoom(
         { id: opponent.id, username: opponent.username },
-        { id: socket.id, username: socket.username },
+        { id: socket.id, username: socket.username }
       );
 
       socket.join(room.id);
@@ -200,11 +237,12 @@ io.on("connection", (socket) => {
     if (!guesses || guesses.length >= 4) return;
     if (room.session.roundFinished[playerId]) return;
 
-    // Validate guess is a real word
+    // Validate guess
     if (!validWords.has(guess.toLowerCase())) {
       socket.emit("invalid_word", { guess });
       return;
     }
+
     const result = processGuess(guess.toLowerCase(), currentWord);
     guesses.push({ guess: guess.toLowerCase(), result });
 
@@ -212,18 +250,25 @@ io.on("connection", (socket) => {
     const isLastGuess = guesses.length >= 4;
 
     let pointsEarned = 0;
+    let bonuses = [];
+
     if (isCorrect) {
-      const elapsed = (Date.now() - room.session.roundStartTime) / 1000;
-      const timeLimit = room.session.timeLimit;
-      const timeLeft = timeLimit - elapsed;
-      const pct = timeLeft / timeLimit;
+      const { total, bonuses: earnedBonuses } = calculatePoints(
+        room,
+        playerId,
+        guesses.length
+      );
+      pointsEarned = total;
+      bonuses = earnedBonuses;
+      room.scores[playerId] = (room.scores[playerId] || 0) + pointsEarned;
 
-      if (pct >= 0.75) pointsEarned = 3;
-      else if (pct >= 0.5) pointsEarned = 2;
-      else if (pct >= 0.25) pointsEarned = 1;
-      else pointsEarned = 1;
-
-      room.scores[playerId] += pointsEarned;
+      // Update win streak
+      if (!room.streaks) room.streaks = {};
+      room.streaks[playerId] = (room.streaks[playerId] || 0) + 1;
+    } else if (isLastGuess) {
+      // Reset streak on failed round
+      if (!room.streaks) room.streaks = {};
+      room.streaks[playerId] = 0;
     }
 
     socket.emit("guess_result", {
@@ -232,6 +277,7 @@ io.on("connection", (socket) => {
       guessNumber: guesses.length,
       isCorrect,
       pointsEarned,
+      bonuses,
       totalScore: room.scores[playerId],
     });
 
@@ -250,9 +296,45 @@ io.on("connection", (socket) => {
   socket.on("time_up", ({ roomId }) => {
     const room = rooms[roomId];
     if (!room) return;
+
+    // Reset streak on time up
+    if (!room.streaks) room.streaks = {};
+    room.streaks[socket.id] = 0;
+
     room.session.roundFinished[socket.id] = true;
     const bothDone = Object.values(room.session.roundFinished).every(Boolean);
     if (bothDone) endRound(room, roomId);
+  });
+
+  socket.on("request_hint", ({ roomId }) => {
+    const room = rooms[roomId];
+    if (!room) return;
+
+    const playerId = socket.id;
+
+    if (room.session.hintUsed[playerId]) {
+      socket.emit("hint_already_used");
+      return;
+    }
+
+    room.session.hintUsed[playerId] = true;
+
+    const elapsed = (Date.now() - room.session.roundStartTime) / 1000;
+    const timeLeft = room.session.timeLimit - elapsed;
+    const penalty = timeLeft > 60 ? 1 : 0;
+
+    if (penalty > 0) {
+      room.scores[playerId] = Math.max(
+        0,
+        (room.scores[playerId] || 0) - penalty
+      );
+    }
+
+    socket.emit("hint_revealed", {
+      hint: room.session.currentHint,
+      penalty,
+      totalScore: room.scores[playerId],
+    });
   });
 
   socket.on("disconnect", () => {
@@ -265,43 +347,9 @@ io.on("connection", (socket) => {
       }
     }
   });
-
-  socket.on("request_hint", ({ roomId }) => {
-    const room = rooms[roomId];
-    if (!room) return;
-
-    const playerId = socket.id;
-
-    // Check if hint already used
-    if (room.session.hintUsed[playerId]) {
-      socket.emit("hint_already_used");
-      return;
-    }
-
-    // Mark hint as used
-    room.session.hintUsed[playerId] = true;
-
-    // Calculate penalty
-    const elapsed = (Date.now() - room.session.roundStartTime) / 1000;
-    const timeLeft = room.session.timeLimit - elapsed;
-    const penalty = timeLeft > 60 ? 1 : 0;
-
-    // Deduct penalty from score
-    if (penalty > 0) {
-      room.scores[playerId] = Math.max(
-        0,
-        (room.scores[playerId] || 0) - penalty,
-      );
-    }
-
-    socket.emit("hint_revealed", {
-      hint: room.session.currentHint,
-      penalty,
-      totalScore: room.scores[playerId],
-    });
-  });
 });
 
+// ─── End Round ────────────────────────────────────────────────────────────────
 function endRound(room, roomId) {
   room.roundActive = false;
   const word = room.session.currentWord;
@@ -345,8 +393,9 @@ function endRound(room, roomId) {
   }
 }
 
+// ─── Health Check ─────────────────────────────────────────────────────────────
 app.get("/health", (req, res) =>
-  res.json({ status: "ok", words: wordList.length }),
+  res.json({ status: "ok", words: wordList.length })
 );
 
 const PORT = process.env.PORT || 4000;
