@@ -284,6 +284,7 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("opponent_guessed", {
       guessNumber: guesses.length,
       isCorrect,
+      scores: room.scores,
     });
 
     if (isCorrect || isLastGuess) {

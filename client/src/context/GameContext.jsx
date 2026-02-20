@@ -91,6 +91,12 @@ function reducer(state, action) {
       return { ...state, invalidWord: false };
     case "OPPONENT_GUESSED":
       return { ...state, opponentGuessCount: action.payload.guessNumber };
+
+    case "UPDATE_SCORES":
+      return {
+        ...state,
+        scores: action.payload.scores,
+      };
     case "ROUND_END":
       return {
         ...state,

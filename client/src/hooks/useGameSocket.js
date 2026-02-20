@@ -51,8 +51,11 @@ export function useGameSocket() {
     });
 
     socket.on("opponent_guessed", (data) => {
-      dispatch({ type: "OPPONENT_GUESSED", payload: data });
-    });
+  dispatch({ type: "OPPONENT_GUESSED", payload: data });
+  if (data.isCorrect && data.scores) {
+    dispatch({ type: "UPDATE_SCORES", payload: { scores: data.scores } });
+  }
+});
 
     socket.on("round_end", (data) => {
       dispatch({ type: "ROUND_END", payload: data });
