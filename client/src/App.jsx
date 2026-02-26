@@ -9,6 +9,7 @@ import Countdown from "./pages/Countdown";
 import Game from "./pages/Game";
 import RoundEnd from "./pages/RoundEnd";
 import SessionEnd from "./pages/SessionEnd";
+import Lobby from "./pages/Lobby";
 import "./styles/global.css";
 
 function AppScreens() {
@@ -26,6 +27,7 @@ function AppScreens() {
     case "countdown":  return <Countdown />;
     case "game":       return <Game />;
     case "roundEnd":   return <RoundEnd />;
+    case "lobby":      return <Lobby />;
     case "sessionEnd": return <SessionEnd />;
     default:           return <Home />;
   }

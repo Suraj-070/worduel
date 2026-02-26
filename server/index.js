@@ -126,20 +126,51 @@ function getRandomWord(length) {
 const rooms = {};
 const waitingRoom = { players: [] };
 
-function createRoom(player1, player2) {
+// ─── Private Room Lobbies ─────────────────────────────────────────────────────
+const privateLobbies = {};
+
+function generateRoomCode() {
+  const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // no I or O to avoid confusion
+  const digits = "0123456789";
+  const part1 = Array.from({ length: 3 }, () => letters[Math.floor(Math.random() * letters.length)]).join("");
+  const part2 = Array.from({ length: 3 }, () => digits[Math.floor(Math.random() * digits.length)]).join("");
+  return `${part1}-${part2}`;
+}
+
+function createPrivateLobby(hostSocket) {
+  let code;
+  // Make sure code is unique
+  do { code = generateRoomCode(); } while (privateLobbies[code]);
+
+  privateLobbies[code] = {
+    code,
+    host: hostSocket.id,
+    players: [{ id: hostSocket.id, username: hostSocket.username }],
+    maxPlayers: 6,
+  };
+
+  console.log(`🏠 Private lobby created: ${code} by ${hostSocket.username}`);
+  return privateLobbies[code];
+}
+
+function createRoom(players, isPrivate = false) {
   const roomId = `room_${Date.now()}`;
-  const session = createGameSession(player1.id, player2.id);
+  const session = createGameSession(players[0].id, players[1]?.id);
+  const scores = {};
+  const streaks = {};
+  players.forEach((p) => { scores[p.id] = 0; streaks[p.id] = 0; });
   rooms[roomId] = {
     id: roomId,
-    players: [player1, player2],
+    players,
     session,
     currentRound: 1,
     totalRounds: 6,
-    scores: { [player1.id]: 0, [player2.id]: 0 },
-    streaks: { [player1.id]: 0, [player2.id]: 0 },
+    scores,
+    streaks,
     roundActive: false,
     isSuddenDeath: false,
     rematchVotes: {},
+    isPrivate,
   };
   return rooms[roomId];
 }
@@ -162,25 +193,21 @@ function startRound(room) {
   room.session.shuffledLetters = shuffled;
   room.session.roundStartTime = Date.now();
   room.session.timeLimit = config.time;
-  room.session.playerGuesses = {
-    [room.players[0].id]: [],
-    [room.players[1].id]: [],
-  };
-  room.session.roundFinished = {
-    [room.players[0].id]: false,
-    [room.players[1].id]: false,
-  };
-  room.session.hintUsed = {
-    [room.players[0].id]: false,
-    [room.players[1].id]: false,
-  };
+  room.session.playerGuesses = {};
+  room.session.roundFinished = {};
+  room.session.hintUsed = {};
+  room.players.forEach((p) => {
+    room.session.playerGuesses[p.id] = [];
+    room.session.roundFinished[p.id] = false;
+    room.session.hintUsed[p.id] = false;
+  });
   room.roundActive = true;
 
   console.log(`📖 Round ${room.currentRound}: "${word}" | Time: ${config.time}s`);
   return { word, hint, shuffled, timeLimit: config.time };
 }
 
-function startSuddenDeath(room, roomId) {
+function startSuddenDeath(room, roomId, tiedPlayers) {
   // 4 letter word, hidden timer of 120s
   const entry = getRandomWord(4);
   if (!entry || !entry.word) return;
@@ -189,32 +216,35 @@ function startSuddenDeath(room, roomId) {
   const hint = entry.hint || null;
   const shuffled = getShuffledLetters(word);
 
+  // Store which players are in sudden death
+  room.suddenDeathPlayers = tiedPlayers || room.players;
+
   room.isSuddenDeath = true;
   room.roundActive = true;
   room.session.currentWord = word;
   room.session.currentHint = hint;
   room.session.shuffledLetters = shuffled;
   room.session.roundStartTime = Date.now();
-  room.session.timeLimit = 120; // hidden from players
-  room.session.playerGuesses = {
-    [room.players[0].id]: [],
-    [room.players[1].id]: [],
-  };
-  room.session.roundFinished = {
-    [room.players[0].id]: false,
-    [room.players[1].id]: false,
-  };
-  room.session.hintUsed = {
-    [room.players[0].id]: false,
-    [room.players[1].id]: false,
-  };
+  room.session.timeLimit = 120;
+  room.session.playerGuesses = {};
+  room.session.roundFinished = {};
+  room.session.hintUsed = {};
 
-  console.log(`💀 Sudden Death: "${word}"`);
+  // Only tied players can guess — others are marked as finished
+  room.players.forEach((p) => {
+    const isTied = room.suddenDeathPlayers.find((tp) => tp.id === p.id);
+    room.session.playerGuesses[p.id] = [];
+    room.session.roundFinished[p.id] = !isTied; // non-tied = already done
+    room.session.hintUsed[p.id] = false;
+  });
+
+  console.log(`💀 Sudden Death: "${word}" | Tied players: ${room.suddenDeathPlayers.map(p => p.username).join(", ")}`);
 
   io.to(roomId).emit("sudden_death_start", {
     shuffledLetters: shuffled,
     wordLength: word.length,
     hint: hint,
+    tiedPlayers: room.suddenDeathPlayers,
   });
 
   // Secret timer — if nobody guesses in 120s → true draw
@@ -223,7 +253,7 @@ function startSuddenDeath(room, roomId) {
       room.roundActive = false;
       io.to(roomId).emit("sudden_death_end", {
         word,
-        winner: null, // true draw
+        winner: null,
         scores: room.scores,
         players: room.players,
       });
@@ -241,10 +271,10 @@ io.on("connection", (socket) => {
 
     if (waitingRoom.players.length > 0) {
       const opponent = waitingRoom.players.shift();
-      const room = createRoom(
+      const room = createRoom([
         { id: opponent.id, username: opponent.username },
-        { id: socket.id, username: socket.username }
-      );
+        { id: socket.id, username: socket.username },
+      ]);
 
       socket.join(room.id);
       opponent.join(room.id);
@@ -268,6 +298,135 @@ io.on("connection", (socket) => {
     } else {
       waitingRoom.players.push(socket);
       socket.emit("waiting_for_opponent");
+    }
+  });
+
+  // ── Private Room: Create ─────────────────────────────────────────────────
+  socket.on("create_private_room", ({ username }) => {
+    socket.username = username || `Player_${socket.id.slice(0, 4)}`;
+    const lobby = createPrivateLobby(socket);
+    socket.join(lobby.code);
+    socket.emit("private_room_created", {
+      code: lobby.code,
+      players: lobby.players,
+    });
+    console.log(`✅ ${socket.username} created private room ${lobby.code}`);
+  });
+
+  // ── Private Room: Join ───────────────────────────────────────────────────
+  socket.on("join_private_room", ({ username, code }) => {
+    const normalizedCode = code.toUpperCase().trim();
+    const lobby = privateLobbies[normalizedCode];
+
+    if (!lobby) {
+      socket.emit("join_room_error", { message: "Room not found. Check the code and try again." });
+      return;
+    }
+
+    if (lobby.players.length >= lobby.maxPlayers) {
+      socket.emit("join_room_error", { message: "Room is full (max 6 players)." });
+      return;
+    }
+
+    // Prevent duplicate join
+    if (lobby.players.find((p) => p.id === socket.id)) {
+      socket.emit("join_room_error", { message: "You are already in this room." });
+      return;
+    }
+
+    socket.username = username || `Player_${socket.id.slice(0, 4)}`;
+    lobby.players.push({ id: socket.id, username: socket.username });
+    socket.join(normalizedCode);
+
+    // Tell everyone in lobby the updated player list
+    io.to(normalizedCode).emit("lobby_update", {
+      code: normalizedCode,
+      players: lobby.players,
+      host: lobby.host,
+    });
+
+    console.log(`✅ ${socket.username} joined private room ${normalizedCode} (${lobby.players.length}/6)`);
+  });
+
+  // ── Private Room: Start Game ────────────────────────────────────────────
+  socket.on("start_private_game", ({ code }) => {
+    const normalizedCode = code.toUpperCase().trim();
+    const lobby = privateLobbies[normalizedCode];
+
+    if (!lobby) {
+      socket.emit("join_room_error", { message: "Lobby not found." });
+      return;
+    }
+    if (lobby.host !== socket.id) {
+      socket.emit("join_room_error", { message: "Only the host can start the game." });
+      return;
+    }
+    if (lobby.players.length < 2) {
+      socket.emit("join_room_error", { message: "Need at least 2 players to start." });
+      return;
+    }
+
+    const room = createRoom(lobby.players, true);
+
+    // Move all players from lobby socket room into the game room
+    lobby.players.forEach((p) => {
+      const s = io.sockets.sockets.get(p.id);
+      if (s) {
+        s.leave(normalizedCode);
+        s.join(room.id);
+      }
+    });
+
+    delete privateLobbies[normalizedCode];
+
+    io.to(room.id).emit("match_found", {
+      roomId: room.id,
+      players: room.players,
+      totalRounds: room.totalRounds,
+    });
+
+    setTimeout(() => {
+      const { word, hint, shuffled, timeLimit } = startRound(room);
+      io.to(room.id).emit("round_start", {
+        round: room.currentRound,
+        shuffledLetters: shuffled,
+        wordLength: word.length,
+        timeLimit,
+        hint,
+      });
+    }, 3000);
+
+    console.log(`🚀 Private game started: ${normalizedCode} → ${room.id} with ${room.players.length} players`);
+  });
+
+  // ── Private Room: Leave Lobby ────────────────────────────────────────────
+  socket.on("leave_private_room", ({ code }) => {
+    const normalizedCode = code.toUpperCase().trim();
+    const lobby = privateLobbies[normalizedCode];
+    if (!lobby) return;
+
+    lobby.players = lobby.players.filter((p) => p.id !== socket.id);
+    socket.leave(normalizedCode);
+
+    if (lobby.players.length === 0) {
+      // Nobody left, clean up
+      delete privateLobbies[normalizedCode];
+      console.log(`🗑️ Private lobby ${normalizedCode} disbanded`);
+    } else if (lobby.host === socket.id) {
+      // Host left — pass host to next player
+      lobby.host = lobby.players[0].id;
+      io.to(normalizedCode).emit("lobby_update", {
+        code: normalizedCode,
+        players: lobby.players,
+        host: lobby.host,
+      });
+      console.log(`👑 Host left ${normalizedCode} — new host: ${lobby.players[0].username}`);
+    } else {
+      io.to(normalizedCode).emit("lobby_update", {
+        code: normalizedCode,
+        players: lobby.players,
+        host: lobby.host,
+      });
     }
   });
 
@@ -421,10 +580,10 @@ io.on("connection", (socket) => {
         // Both agreed — create new room
         clearTimeout(req.timer);
         const [s1, s2] = req.sockets;
-        const newRoom = createRoom(
+        const newRoom = createRoom([
           { id: s1.id, username: s1.username },
-          { id: s2.id, username: s2.username }
-        );
+          { id: s2.id, username: s2.username },
+        ]);
         s1.join(newRoom.id);
         s2.join(newRoom.id);
 
@@ -536,6 +695,26 @@ io.on("connection", (socket) => {
     console.log(`❌ Disconnected: ${socket.id}`);
     waitingRoom.players = waitingRoom.players.filter((p) => p.id !== socket.id);
 
+    // Clean up private lobbies if player was waiting in one
+    for (const [code, lobby] of Object.entries(privateLobbies)) {
+      const inLobby = lobby.players.find((p) => p.id === socket.id);
+      if (inLobby) {
+        lobby.players = lobby.players.filter((p) => p.id !== socket.id);
+        if (lobby.players.length === 0) {
+          delete privateLobbies[code];
+          console.log(`🗑️ Private lobby ${code} disbanded on disconnect`);
+        } else {
+          if (lobby.host === socket.id) lobby.host = lobby.players[0].id;
+          io.to(code).emit("lobby_update", {
+            code,
+            players: lobby.players,
+            host: lobby.host,
+          });
+        }
+        break;
+      }
+    }
+
     for (const [roomId, room] of Object.entries(rooms)) {
       const playerIndex = room.players.findIndex((p) => p.id === socket.id);
       if (playerIndex !== -1) {
@@ -588,25 +767,34 @@ function endRound(room, roomId) {
   });
 
   if (room.currentRound >= room.totalRounds) {
-    const [p1, p2] = room.players;
-    const isDraw = room.scores[p1.id] === room.scores[p2.id];
-    const winner = isDraw
-      ? null
-      : room.scores[p1.id] > room.scores[p2.id]
-        ? p1
-        : p2;
+    // Find winner by highest score across all players
+    let topScore = -1;
+    let winner = null;
+    let tied = false;
+    for (const p of room.players) {
+      const s = room.scores[p.id] || 0;
+      if (s > topScore) { topScore = s; winner = p; tied = false; }
+      else if (s === topScore) { tied = true; winner = null; }
+    }
+    const isDraw = tied;
+
+    // Find all tied players at the top score
+    const tiedPlayers = room.players.filter((p) => (room.scores[p.id] || 0) === topScore);
 
     setTimeout(() => {
-      if (isDraw) {
-        // Trigger sudden death
-        io.to(roomId).emit("sudden_death_countdown", { seconds: 10 });
+      if (isDraw && tiedPlayers.length >= 2) {
+        // Sudden death for ALL tied players (works for 2 or more)
+        io.to(roomId).emit("sudden_death_countdown", {
+          seconds: 10,
+          tiedPlayers,
+        });
         let cd = 10;
         const cdInterval = setInterval(() => {
           cd--;
-          io.to(roomId).emit("sudden_death_countdown", { seconds: cd });
+          io.to(roomId).emit("sudden_death_countdown", { seconds: cd, tiedPlayers });
           if (cd <= 0) {
             clearInterval(cdInterval);
-            startSuddenDeath(room, roomId);
+            startSuddenDeath(room, roomId, tiedPlayers);
           }
         }, 1000);
       } else {

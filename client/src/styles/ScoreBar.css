@@ -15,7 +15,9 @@
   gap: 2px;
 }
 
-.scorebar__player--opponent { align-items: flex-end; }
+.scorebar__player--opponent {
+  align-items: flex-end;
+}
 
 .scorebar__name {
   font-size: 0.7rem;
@@ -50,8 +52,12 @@
   transition: background 0.3s;
 }
 
-.scorebar__round-dot.done   { background: var(--green); }
-.scorebar__round-dot.active { background: var(--accent); }
+.scorebar__round-dot.done {
+  background: var(--green);
+}
+.scorebar__round-dot.active {
+  background: var(--accent);
+}
 
 .scorebar__round-label {
   font-size: 0.6rem;
@@ -64,4 +70,85 @@
   color: var(--text-muted);
 }
 
-.scorebar__guesses { letter-spacing: 0.05em; }
+.scorebar__guesses {
+  letter-spacing: 0.05em;
+}
+
+/* ── Multiplayer Leaderboard ScoreBar ── */
+.scorebar--multi {
+  width: 100%;
+  max-width: 600px;
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.scorebar__multi-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.scorebar__multi-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.scorebar__leaderboard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.scorebar__lb-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: border-color 0.2s;
+}
+
+.scorebar__lb-row--me {
+  border-color: var(--accent);
+  background: rgba(26, 74, 255, 0.08);
+}
+
+.scorebar__lb-rank {
+  font-size: 0.75rem;
+  width: 24px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.scorebar__lb-name {
+  flex: 1;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.scorebar__lb-you {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 1px 5px;
+  border-radius: 2px;
+  background: rgba(26, 74, 255, 0.2);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.scorebar__lb-score {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.05em;
+}

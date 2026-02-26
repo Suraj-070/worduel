@@ -31,11 +31,16 @@ const initialState = {
   suddenDeathCountdown: null,
   suddenDeathWinner: null,
   suddenDeathWord: null,
+  suddenDeathTiedPlayers: [],
   // Rematch
   opponentWantsRematch: false,
   rematchDeclined: false,
   rematchExpired: false,
   waitingForRematch: false,
+  // Private lobby
+  lobbyCode: null,
+  lobbyPlayers: [],
+  lobbyHost: null,
 };
 
 function reducer(state, action) {
@@ -150,6 +155,7 @@ function reducer(state, action) {
         ...state,
         screen: "suddenDeathCountdown",
         suddenDeathCountdown: action.payload.seconds,
+        suddenDeathTiedPlayers: action.payload.tiedPlayers || state.players,
       };
 
     case "SUDDEN_DEATH_START":
@@ -228,6 +234,34 @@ function reducer(state, action) {
 
     case "REJOIN_FAILED":
       return { ...state, screen: "home", opponentDisconnected: false };
+
+    // ── Private Lobby ─────────────────────────────────────────────────────
+    case "PRIVATE_ROOM_CREATED":
+      return {
+        ...state,
+        screen: "lobby",
+        lobbyCode: action.payload.code,
+        lobbyPlayers: action.payload.players,
+        lobbyHost: state.myId,
+      };
+
+    case "JOINED_PRIVATE_ROOM":
+      return {
+        ...state,
+        screen: "lobby",
+        lobbyCode: action.payload.code,
+        lobbyPlayers: action.payload.players,
+        lobbyHost: action.payload.host,
+      };
+
+    case "LOBBY_UPDATE":
+      return {
+        ...state,
+        screen: "lobby",
+        lobbyPlayers: action.payload.players,
+        lobbyHost: action.payload.host,
+        lobbyCode: action.payload.code,
+      };
 
     case "RESET":
       return { ...initialState };

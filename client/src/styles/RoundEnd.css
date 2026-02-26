@@ -166,3 +166,61 @@
 
 .session-end__btn:hover  { background: #f5d45a; transform: translateY(-2px); }
 .session-end__btn:active { transform: translateY(0); }
+
+
+
+.round-end__leaderboard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  margin: 1rem 0;
+}
+
+.round-end__lb-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.round-end__lb-row--me {
+  border-color: var(--accent);
+  background: rgba(26, 74, 255, 0.08);
+}
+
+.round-end__lb-rank {
+  font-size: 0.75rem;
+  width: 24px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.round-end__lb-name {
+  flex: 1;
+  font-size: 0.82rem;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.round-end__lb-you {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 1px 5px;
+  border-radius: 2px;
+  background: rgba(26, 74, 255, 0.2);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.round-end__lb-score {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+}

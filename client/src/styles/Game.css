@@ -244,3 +244,19 @@
   width: 100%;
   max-width: 500px;
 }
+
+/* ── Paste at bottom of Game.css ── */
+
+.game__spectate-banner {
+  background: rgba(255, 71, 87, 0.1);
+  border: 1px dashed var(--accent2);
+  color: var(--accent2);
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  text-align: center;
+  animation: fadeIn 0.3s ease;
+  max-width: 500px;
+  width: 100%;
+}

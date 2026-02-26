@@ -9,6 +9,11 @@ export function useGameSocket() {
   useEffect(() => {
     if (!socket) return;
 
+    // Set ID immediately if already connected, and also on future reconnects
+    if (socket.connected) {
+      dispatch({ type: "SET_MY_ID", payload: socket.id });
+    }
+
     socket.on("connect", () => {
       dispatch({ type: "SET_MY_ID", payload: socket.id });
     });
@@ -43,7 +48,7 @@ export function useGameSocket() {
               bonuses: data.bonuses || [],
               pointsEarned: data.pointsEarned,
             },
-          })
+          }),
         );
       }
     });
@@ -122,6 +127,19 @@ export function useGameSocket() {
       dispatch({ type: "REJOIN_FAILED" });
     });
 
+    // ── Private Lobby ───────────────────────────────────────────────────────
+    socket.on("joined_private_room", (data) => {
+      dispatch({ type: "JOINED_PRIVATE_ROOM", payload: data });
+    });
+
+    socket.on("private_room_created", (data) => {
+      dispatch({ type: "PRIVATE_ROOM_CREATED", payload: data });
+    });
+
+    socket.on("lobby_update", (data) => {
+      dispatch({ type: "LOBBY_UPDATE", payload: data });
+    });
+
     return () => {
       socket.off("connect");
       socket.off("waiting_for_opponent");
@@ -147,6 +165,9 @@ export function useGameSocket() {
       socket.off("opponent_forfeited");
       socket.off("rejoin_success");
       socket.off("rejoin_failed");
+      socket.off("joined_private_room");
+      socket.off("private_room_created");
+      socket.off("lobby_update");
     };
   }, [socket, dispatch]);
 }

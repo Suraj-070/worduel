@@ -78,3 +78,37 @@
   0%, 100% { border-color: #ff0000; color: #ff4444; }
   50%       { border-color: #ff6666; color: #ff6666; }
 }
+
+/* ── Paste at bottom of SuddenDeathCountdown.css ── */
+
+.sd-countdown__players {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin: 0.5rem 0;
+}
+
+.sd-countdown__player {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 4px 12px;
+  border-radius: 4px;
+  background: rgba(255, 71, 87, 0.15);
+  border: 1px solid var(--accent2);
+  color: var(--accent2);
+}
+
+.sd-countdown__player--me {
+  background: rgba(26, 74, 255, 0.2);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.sd-countdown__sub--watching {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+

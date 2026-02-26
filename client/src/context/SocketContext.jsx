@@ -3,41 +3,36 @@ import { io } from "socket.io-client";
 
 const SocketContext = createContext(null);
 
-export const SocketProvider = ({ children }) => {
-  const [socket, setSocket] = useState(null);
+// Create socket ONCE outside component so it never gets recreated
+const socket = io(
+  process.env.NODE_ENV === "production"
+    ? "https://worduel-server-l2j1.onrender.com"
+    : "http://localhost:4000",
+  {
+    autoConnect: false,
+    transports: ["websocket", "polling"],
+  }
+);
 
+export const SocketProvider = ({ children }) => {
   useEffect(() => {
-    const s = io(
-      process.env.NODE_ENV === "production"
-        ? "https://worduel-server-l2j1.onrender.com"
-        : "http://localhost:4000",
-      {
-        autoConnect: false,
-        transports: ["websocket", "polling"],
-      },
-    );
-    setSocket(s);
-    s.connect();
-    return () => s.disconnect();
+    socket.connect();
+
+    socket.on("connect", () => {
+      if (socket.id) {
+        sessionStorage.setItem("socketId", socket.id);
+      }
+    });
+
+    return () => {
+      socket.off("connect");
+    };
   }, []);
 
-  useEffect(() => {
-  if (!socket) return; // guard against null socket
-  
-  socket.on("connect", () => {
-    if (socket.id) {
-      sessionStorage.setItem("socketId", socket.id);
-    }
-  });
-
-  return () => {
-    socket.off("connect");
-  };
-}, [socket]);
-
-
   return (
-    <SocketContext.Provider value={socket}>{children}</SocketContext.Provider>
+    <SocketContext.Provider value={socket}>
+      {children}
+    </SocketContext.Provider>
   );
 };
 

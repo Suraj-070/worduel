@@ -48,8 +48,12 @@ export default function Game() {
     invalidWord,
   } = state;
 
-  const opponent = state.players.find((p) => p.id !== state.myId);
   const me = state.players.find((p) => p.id === state.myId);
+  const opponent = state.players.find((p) => p.id !== state.myId);
+  const isMultiplayer = state.players.length > 2;
+  const isSpectating = state.isSuddenDeath && 
+    state.suddenDeathTiedPlayers?.length > 0 && 
+    !state.suddenDeathTiedPlayers.some((p) => p.id === state.myId);
 
   useEffect(() => {
     const handleCorrect = (e) => {
@@ -242,6 +246,7 @@ export default function Game() {
       <ScoreBar
         me={me}
         opponent={opponent}
+        players={state.players}
         scores={state.scores}
         currentRound={currentRound}
         totalRounds={totalRounds}
@@ -311,7 +316,7 @@ export default function Game() {
       )}
 
       {/* Hint button */}
-      {!roundDone && !hintRevealed && (
+      {!roundDone && !hintRevealed && !isSpectating && (
         <button className="game__hint-btn" onClick={handleHintClick}>
           💡 USE HINT
         </button>
@@ -320,7 +325,7 @@ export default function Game() {
       {/* Round done messages */}
       {roundDone && (
         <div className="game__waiting-msg">
-          {timeUp ? "⌛ TIME'S UP!" : "⏳ Waiting for opponent to finish..."}
+          {timeUp ? "⌛ TIME'S UP!" : isMultiplayer ? "⏳ Waiting for others to finish..." : "⏳ Waiting for opponent to finish..."}
         </div>
       )}
 
@@ -329,8 +334,15 @@ export default function Game() {
         <div className="game__invalid-msg">❌ Not a valid word!</div>
       )}
 
+      {/* Spectator message during sudden death */}
+      {isSpectating && (
+        <div className="game__spectate-banner">
+          👀 You're spectating — watching sudden death between tied players
+        </div>
+      )}
+
       {/* Controls */}
-      {!roundDone && (
+      {!roundDone && !isSpectating && (
         <div className="game__controls">
           <LetterPool
             letters={shuffledLetters}

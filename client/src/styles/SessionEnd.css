@@ -193,3 +193,66 @@
   from { opacity: 0; transform: translateY(5px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+.session-end__leaderboard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+  margin: 1rem 0;
+}
+
+.session-end__lb-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: border-color 0.2s;
+}
+
+.session-end__lb-row--me {
+  border-color: var(--accent);
+  background: rgba(26, 74, 255, 0.08);
+}
+
+.session-end__lb-row--winner {
+  border-color: #e8c547;
+  background: rgba(232, 197, 71, 0.08);
+}
+
+.session-end__lb-rank {
+  font-size: 0.8rem;
+  width: 28px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.session-end__lb-name {
+  flex: 1;
+  font-size: 0.88rem;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.session-end__lb-you {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 1px 5px;
+  border-radius: 2px;
+  background: rgba(26, 74, 255, 0.2);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.session-end__lb-score {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+}

@@ -1,0 +1,298 @@
+.lobby {
+  min-height: 100vh;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  padding: 2rem 1rem;
+}
+
+.lobby__noise {
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+.lobby__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.2rem;
+  width: 100%;
+  max-width: 480px;
+  z-index: 1;
+}
+
+.lobby__badge {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  padding: 4px 12px;
+  border-radius: 2px;
+}
+
+.lobby__title {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 8vw, 4rem);
+  letter-spacing: 0.05em;
+  color: var(--text);
+  line-height: 1;
+  text-align: center;
+}
+
+.lobby__sub {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
+/* ── Lucky Draw Code Tiles ── */
+.lobby__code-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0.5rem 0;
+}
+
+.lobby__code-tile {
+  position: relative;
+  width: 54px;
+  height: 66px;
+  background: var(--surface);
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+  color: var(--text);
+  overflow: hidden;
+  box-shadow:
+    0 0 12px rgba(26, 74, 255, 0.35),
+    0 0 30px rgba(26, 74, 255, 0.12),
+    inset 0 1px 0 rgba(255,255,255,0.07);
+  animation: tileGlow 2.5s ease-in-out infinite alternate;
+}
+
+.lobby__code-tile:nth-child(2) { animation-delay: 0.2s; }
+.lobby__code-tile:nth-child(3) { animation-delay: 0.4s; }
+.lobby__code-tile:nth-child(5) { animation-delay: 0.6s; }
+.lobby__code-tile:nth-child(6) { animation-delay: 0.8s; }
+.lobby__code-tile:nth-child(7) { animation-delay: 1s; }
+
+@keyframes tileGlow {
+  from { box-shadow: 0 0 10px rgba(26,74,255,0.3), 0 0 24px rgba(26,74,255,0.1), inset 0 1px 0 rgba(255,255,255,0.07); }
+  to   { box-shadow: 0 0 18px rgba(26,74,255,0.6), 0 0 40px rgba(26,74,255,0.2), inset 0 1px 0 rgba(255,255,255,0.07); }
+}
+
+/* Shine sweep */
+.lobby__code-shine {
+  position: absolute;
+  top: -60%;
+  left: -60%;
+  width: 50%;
+  height: 180%;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255,255,255,0.12) 50%,
+    transparent 60%
+  );
+  transform: skewX(-15deg);
+  animation: shineSweep 3.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes shineSweep {
+  0%   { left: -60%; }
+  40%  { left: 130%; }
+  100% { left: 130%; }
+}
+
+.lobby__code-dash {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  color: var(--text-muted);
+  padding: 0 2px;
+  line-height: 1;
+}
+
+/* ── Copy Button ── */
+.lobby__copy-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  padding: 6px 18px;
+  border-radius: 2px;
+  transition: all 0.2s;
+}
+
+.lobby__copy-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── Player List ── */
+.lobby__players {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-top: 0.4rem;
+}
+
+.lobby__players-header {
+  background: var(--surface);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--text-muted);
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.lobby__players-list {
+  list-style: none;
+}
+
+.lobby__player-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+
+.lobby__player-row:last-child { border-bottom: none; }
+.lobby__player-row:not(.lobby__player-row--empty):hover {
+  background: rgba(26, 74, 255, 0.05);
+}
+
+.lobby__player-index {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  width: 18px;
+  flex-shrink: 0;
+}
+
+.lobby__player-name {
+  flex: 1;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lobby__player-empty {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.75rem;
+}
+
+.lobby__player-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  flex-shrink: 0;
+}
+
+.lobby__host-badge,
+.lobby__you-badge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+
+.lobby__host-badge {
+  background: rgba(26, 74, 255, 0.15);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.lobby__you-badge {
+  background: rgba(76, 175, 125, 0.15);
+  color: var(--green);
+  border: 1px solid var(--green);
+}
+
+/* ── Actions ── */
+.lobby__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-top: 0.4rem;
+}
+
+.lobby__start-btn {
+  width: 100%;
+  padding: 14px;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  letter-spacing: 0.1em;
+  border: none;
+  border-radius: 4px;
+  transition: opacity 0.2s, transform 0.1s;
+}
+
+.lobby__start-btn:hover:not(.lobby__start-btn--disabled) {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+
+.lobby__start-btn--disabled {
+  background: var(--surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  cursor: not-allowed;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  font-family: var(--font-mono);
+}
+
+.lobby__waiting-msg {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  padding: 14px;
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  width: 100%;
+  text-align: center;
+}
+
+.lobby__leave-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  padding: 8px 20px;
+  border-radius: 2px;
+  transition: all 0.2s;
+}
+
+.lobby__leave-btn:hover {
+  border-color: var(--accent2);
+  color: var(--accent2);
+}

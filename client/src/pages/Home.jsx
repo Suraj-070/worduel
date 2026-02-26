@@ -8,28 +8,51 @@ export default function Home() {
   const { state, dispatch } = useGame();
   const [name, setName] = useState("");
 
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [joinCode, setJoinCode] = useState("");
+  const [joinError, setJoinError] = useState("");
+
   useEffect(() => {
-    // Check if player was in a game before refresh
     const savedRoomId = sessionStorage.getItem("roomId");
     const savedUsername = sessionStorage.getItem("username");
-
     if (savedRoomId && savedUsername) {
       console.log("🔄 Attempting to rejoin room...");
       socket.connect();
-      socket.emit("rejoin_room", {
-        roomId: savedRoomId,
-        username: savedUsername,
-      });
-      // Clear saved room after attempt
+      socket.emit("rejoin_room", { roomId: savedRoomId, username: savedUsername });
       sessionStorage.removeItem("roomId");
     }
   }, []);
 
+  useEffect(() => {
+    socket.on("join_room_error", ({ message }) => {
+      setJoinError(message);
+    });
+    return () => socket.off("join_room_error");
+  }, [socket]);
+
+  const getUsername = () =>
+    name.trim() || `Player_${Math.floor(Math.random() * 9999)}`;
+
   const handlePlay = () => {
-    const username =
-      name.trim() || `Player_${Math.floor(Math.random() * 9999)}`;
+    const username = getUsername();
     dispatch({ type: "SET_USERNAME", payload: username });
     socket.emit("find_match", { username });
+  };
+
+  const handleCreateRoom = () => {
+    const username = getUsername();
+    dispatch({ type: "SET_USERNAME", payload: username });
+    socket.emit("create_private_room", { username });
+  };
+
+  const handleJoinRoom = () => {
+    if (!joinCode.trim()) {
+      setJoinError("Please enter a room code.");
+      return;
+    }
+    const username = getUsername();
+    dispatch({ type: "SET_USERNAME", payload: username });
+    socket.emit("join_private_room", { username, code: joinCode.trim() });
   };
 
   return (
@@ -59,7 +82,20 @@ export default function Home() {
           <button className="home__btn" onClick={handlePlay}>
             FIND MATCH
           </button>
+
+          <div className="home__private-row">
+            <button className="home__btn-private" onClick={handleCreateRoom}>
+              CREATE ROOM
+            </button>
+            <button
+              className="home__btn-private home__btn-private--join"
+              onClick={() => { setShowJoinModal(true); setJoinError(""); }}
+            >
+              JOIN ROOM
+            </button>
+          </div>
         </div>
+
         <div className="home__rules">
           <div className="home__rule">
             <span className="tile green">A</span>
@@ -75,10 +111,40 @@ export default function Home() {
           </div>
         </div>
       </div>
+
       <footer className="home__footer">
         <span className="home__footer-copy">©</span> 2026 WORDSTRIKE — THINK
         FAST. GUESS FASTER.
       </footer>
+
+      {showJoinModal && (
+        <div className="home__modal-overlay" onClick={() => setShowJoinModal(false)}>
+          <div className="home__modal" onClick={(e) => e.stopPropagation()}>
+            <div className="home__modal-title">ENTER ROOM CODE</div>
+            <p className="home__modal-sub">Ask your friend for their 6-character code</p>
+            <input
+              className="home__input home__modal-input"
+              type="text"
+              placeholder="e.g. WRD-482"
+              value={joinCode}
+              onChange={(e) => { setJoinCode(e.target.value.toUpperCase()); setJoinError(""); }}
+              onKeyDown={(e) => e.key === "Enter" && handleJoinRoom()}
+              maxLength={7}
+              autoFocus
+            />
+            {joinError && <p className="home__modal-error">{joinError}</p>}
+            <div className="home__modal-actions">
+              <button className="home__btn" onClick={handleJoinRoom}>JOIN</button>
+              <button
+                className="home__btn-private"
+                onClick={() => { setShowJoinModal(false); setJoinCode(""); setJoinError(""); }}
+              >
+                CANCEL
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
