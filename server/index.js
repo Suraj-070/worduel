@@ -202,6 +202,7 @@ function startRound(room) {
     room.session.hintUsed[p.id] = false;
   });
   room.roundActive = true;
+  room.tauntUsed = {}; // reset taunts each round
 
   console.log(`📖 Round ${room.currentRound}: "${word}" | Time: ${config.time}s`);
   return { word, hint, shuffled, timeLimit: config.time };
@@ -613,6 +614,47 @@ io.on("connection", (socket) => {
         }, 30000);
       }
     }
+  });
+
+  // ── Taunt ────────────────────────────────────────────────────────────────
+  socket.on("send_taunt", ({ roomId, tauntId, toId }) => {
+    const room = rooms[roomId];
+    if (!room || !room.roundActive || room.isSuddenDeath) return;
+
+    // One taunt per player per round
+    if (!room.tauntUsed) room.tauntUsed = {};
+    if (room.tauntUsed[socket.id]) return;
+    room.tauntUsed[socket.id] = true;
+
+    const sender = room.players.find((p) => p.id === socket.id);
+    if (!sender) return;
+
+    // In 1v1 send to opponent only, in multiplayer send to specific target or everyone
+    if (toId) {
+      const targetSocket = io.sockets.sockets.get(toId);
+      if (targetSocket) {
+        targetSocket.emit("taunt_received", {
+          tauntId,
+          fromUsername: sender.username,
+          toId,
+        });
+      }
+      // Also notify everyone else so they see "X taunted Y"
+      socket.to(roomId).emit("taunt_broadcast", {
+        tauntId,
+        fromUsername: sender.username,
+        toId,
+      });
+    } else {
+      // 1v1 — send to everyone in room except sender
+      socket.to(roomId).emit("taunt_received", {
+        tauntId,
+        fromUsername: sender.username,
+        toId: null,
+      });
+    }
+
+    console.log(`😤 Taunt: ${sender.username} → ${tauntId}`);
   });
 
   socket.on("decline_rematch", ({ roomId }) => {

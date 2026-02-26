@@ -260,3 +260,186 @@
   max-width: 500px;
   width: 100%;
 }
+/* ── Taunt System ── */
+
+.game__taunt-toggle {
+  background: transparent;
+  border: 1px dashed #444;
+  color: #555;
+  padding: 0.45rem 1.2rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  transition: all 0.2s;
+  margin-top: 0.4rem;
+}
+
+.game__taunt-toggle:hover:not(:disabled) {
+  border-color: var(--accent2);
+  color: var(--accent2);
+}
+
+.game__taunt-toggle--used {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.game__taunt-bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 500px;
+  padding: 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  animation: popIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.game__taunt-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  min-width: 80px;
+}
+
+.game__taunt-btn:hover {
+  border-color: var(--accent2);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 71, 87, 0.2);
+}
+
+.game__taunt-emoji {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.game__taunt-label {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* ── Received Taunt Bubble ── */
+.game__taunt-received,
+.game__taunt-broadcast {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  letter-spacing: 0.05em;
+  z-index: 500;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.game__taunt-received {
+  background: rgba(255, 71, 87, 0.15);
+  border: 1px solid var(--accent2);
+  color: var(--text);
+  box-shadow: 0 0 20px rgba(255, 71, 87, 0.25);
+}
+
+.game__taunt-broadcast {
+  background: rgba(26, 74, 255, 0.1);
+  border: 1px solid var(--accent);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  top: 120px;
+}
+
+.game__taunt-from {
+  font-weight: 700;
+  color: var(--accent2);
+}
+
+.game__taunt-broadcast .game__taunt-from {
+  color: var(--accent);
+}
+
+.game__taunt-arrow {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.game__taunt-text {
+  color: var(--text);
+}
+
+/* ── Per-taunt animations ── */
+
+/* 😤 Is that your best? — left-right wobble */
+.game__taunt-received--best {
+  animation: tauntWobble 0.5s ease forwards, tauntFadeOut 0.3s ease 2.7s forwards;
+}
+
+@keyframes tauntWobble {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+  20%  { transform: translateX(calc(-50% - 6px)); opacity: 1; }
+  40%  { transform: translateX(calc(-50% + 6px)); }
+  60%  { transform: translateX(calc(-50% - 4px)); }
+  80%  { transform: translateX(calc(-50% + 4px)); }
+  100% { transform: translateX(-50%); opacity: 1; }
+}
+
+/* 🔥 I'm on fire! — bouncy spring from below */
+.game__taunt-received--fire {
+  animation: tauntBounce 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards, tauntFadeOut 0.3s ease 2.7s forwards;
+}
+
+@keyframes tauntBounce {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(30px) scale(0.8); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+/* 👀 Tick tock — slow creep from top with sway */
+.game__taunt-received--ticktock {
+  animation: tauntCreep 0.6s ease forwards, tauntSway 1s ease 0.6s 2 alternate, tauntFadeOut 0.3s ease 2.7s forwards;
+}
+
+@keyframes tauntCreep {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes tauntSway {
+  from { transform: translateX(calc(-50% - 5px)); }
+  to   { transform: translateX(calc(-50% + 5px)); }
+}
+
+/* 🤝 Good game — gentle fade in scale */
+.game__taunt-received--gg {
+  animation: tauntGG 0.4s ease forwards, tauntFadeOut 0.3s ease 2.7s forwards;
+}
+
+@keyframes tauntGG {
+  0%   { opacity: 0; transform: translateX(-50%) scale(0.85); }
+  100% { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
+/* Shared fade out */
+@keyframes tauntFadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+}
+
+/* Broadcast taunt (observer) — simple fade */
+.game__taunt-broadcast {
+  animation: tauntGG 0.3s ease forwards, tauntFadeOut 0.3s ease 2.7s forwards;
+}

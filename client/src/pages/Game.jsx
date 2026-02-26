@@ -34,6 +34,12 @@ export default function Game() {
   // Track round start time using ref — no extra interval needed
   const roundStartRef = useRef(Date.now());
 
+  // Taunt state
+  const [tauntSent, setTauntSent] = useState(false);
+  const [receivedTaunt, setReceivedTaunt] = useState(null); // { tauntId, fromUsername, toId }
+  const [broadcastTaunt, setBroadcastTaunt] = useState(null); // multiplayer observer
+  const [showTauntBar, setShowTauntBar] = useState(false);
+
   const {
     shuffledLetters,
     wordLength,
@@ -54,6 +60,46 @@ export default function Game() {
   const isSpectating = state.isSuddenDeath && 
     state.suddenDeathTiedPlayers?.length > 0 && 
     !state.suddenDeathTiedPlayers.some((p) => p.id === state.myId);
+
+  // Taunt definitions
+  const TAUNTS = [
+    { id: "best",     emoji: "😤", label: "Is that your best?" },
+    { id: "fire",     emoji: "🔥", label: "I'm on fire!"       },
+    { id: "ticktock", emoji: "👀", label: "Tick tock..."       },
+    { id: "gg",       emoji: "🤝", label: "Good game!"         },
+  ];
+
+  // Taunt socket listeners
+  useEffect(() => {
+    socket.on("taunt_received", (data) => {
+      setReceivedTaunt(data);
+      setTimeout(() => setReceivedTaunt(null), 3000);
+    });
+    socket.on("taunt_broadcast", (data) => {
+      setBroadcastTaunt(data);
+      setTimeout(() => setBroadcastTaunt(null), 3000);
+    });
+    return () => {
+      socket.off("taunt_received");
+      socket.off("taunt_broadcast");
+    };
+  }, [socket]);
+
+  // Reset taunt state on new round
+  useEffect(() => {
+    setTauntSent(false);
+    setShowTauntBar(false);
+    setReceivedTaunt(null);
+    setBroadcastTaunt(null);
+  }, [currentRound]);
+
+  const handleSendTaunt = (tauntId) => {
+    if (tauntSent || roundDone || state.isSuddenDeath) return;
+    // In 1v1 send to opponent, in multiplayer send to all (server handles it)
+    socket.emit("send_taunt", { roomId, tauntId, toId: isMultiplayer ? null : opponent?.id });
+    setTauntSent(true);
+    setShowTauntBar(false);
+  };
 
   useEffect(() => {
     const handleCorrect = (e) => {
@@ -366,6 +412,59 @@ export default function Game() {
           </div>
         </div>
       )}
+      {/* Taunt bar toggle button */}
+      {!roundDone && !isSpectating && !state.isSuddenDeath && (
+        <button
+          className={`game__taunt-toggle ${tauntSent ? "game__taunt-toggle--used" : ""}`}
+          onClick={() => !tauntSent && setShowTauntBar((v) => !v)}
+          disabled={tauntSent}
+          title={tauntSent ? "Already taunted this round" : "Send a taunt"}
+        >
+          {tauntSent ? "😤 Taunted!" : "😤 TAUNT"}
+        </button>
+      )}
+
+      {/* Taunt bar */}
+      {showTauntBar && !tauntSent && (
+        <div className="game__taunt-bar">
+          {TAUNTS.map((t) => (
+            <button
+              key={t.id}
+              className="game__taunt-btn"
+              onClick={() => handleSendTaunt(t.id)}
+              title={t.label}
+            >
+              <span className="game__taunt-emoji">{t.emoji}</span>
+              <span className="game__taunt-label">{t.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Received taunt animation */}
+      {receivedTaunt && (
+        <div className={`game__taunt-received game__taunt-received--${receivedTaunt.tauntId}`}>
+          <span className="game__taunt-from">{receivedTaunt.fromUsername}</span>
+          <span className="game__taunt-arrow">→</span>
+          <span className="game__taunt-text">
+            {TAUNTS.find((t) => t.id === receivedTaunt.tauntId)?.emoji}{" "}
+            {TAUNTS.find((t) => t.id === receivedTaunt.tauntId)?.label}
+          </span>
+        </div>
+      )}
+
+      {/* Multiplayer broadcast taunt (observer sees X taunted Y) */}
+      {broadcastTaunt && !receivedTaunt && (
+        <div className="game__taunt-broadcast">
+          <span className="game__taunt-from">{broadcastTaunt.fromUsername}</span>
+          <span className="game__taunt-arrow">→</span>
+          <span className="game__taunt-text">
+            {TAUNTS.find((t) => t.id === broadcastTaunt.tauntId)?.emoji}{" "}
+            {TAUNTS.find((t) => t.id === broadcastTaunt.tauntId)?.label}
+          </span>
+        </div>
+      )}
+
       {/* Animations */}
       <FireStreak streak={currentStreak} show={showFireStreak} />
       <SpeedDemon show={showSpeedDemon} />
