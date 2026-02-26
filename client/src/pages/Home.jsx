@@ -65,9 +65,11 @@ export default function Home() {
           <span className="home__title-duel">TRIKE</span>
         </h1>
         <p className="home__sub">
-          6 rounds. 4 tries. 6 minutes 9 seconds.
+          6 rounds with 4 tries
           <br />
-          Unscramble the word before your opponent does.
+          Unscramble the word before your opponent strikes
+          <br/>
+          <h3>LETS STRIKE NOW</h3>
         </p>
         <div className="home__form">
           <input
@@ -114,7 +116,7 @@ export default function Home() {
 
       <footer className="home__footer">
         <span className="home__footer-copy">©</span> 2026 WORDSTRIKE — THINK
-        FAST. GUESS FASTER.
+        FAST. STRIKE FASTER.
       </footer>
 
       {showJoinModal && (

@@ -151,7 +151,7 @@ export default function LoadingScreen({ onFinish }) {
         </div>
 
         <p className="loading__tagline">
-          {"THINK FAST. GUESS FASTER.".split("").map((c, i) => (
+          {"THINK FAST. STRIKE FASTER.".split("").map((c, i) => (
             <span key={i} style={{ animationDelay: `${0.8 + i * 0.03}s` }}
               className="loading__tagline-char">
               {c === " " ? "\u00A0" : c}
