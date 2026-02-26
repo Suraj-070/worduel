@@ -35,9 +35,7 @@ export function useGameSocket() {
 
     socket.on("guess_result", (data) => {
       dispatch({ type: "GUESS_RESULT", payload: data });
-
       if (data.isCorrect) {
-        // Fire custom event so Game.jsx can trigger animations
         window.dispatchEvent(
           new CustomEvent("round_correct", {
             detail: {
@@ -45,7 +43,7 @@ export function useGameSocket() {
               bonuses: data.bonuses || [],
               pointsEarned: data.pointsEarned,
             },
-          }),
+          })
         );
       }
     });
@@ -65,43 +63,63 @@ export function useGameSocket() {
       dispatch({ type: "SESSION_END", payload: data });
     });
 
+    socket.on("invalid_word", () => {
+      dispatch({ type: "INVALID_WORD" });
+    });
+
+    // ── Sudden Death ────────────────────────────────────────────────────────
+    socket.on("sudden_death_countdown", (data) => {
+      dispatch({ type: "SUDDEN_DEATH_COUNTDOWN", payload: data });
+    });
+
+    socket.on("sudden_death_start", (data) => {
+      dispatch({ type: "SUDDEN_DEATH_START", payload: data });
+    });
+
+    socket.on("sudden_death_end", (data) => {
+      dispatch({ type: "SUDDEN_DEATH_END", payload: data });
+    });
+
+    // ── Rematch ─────────────────────────────────────────────────────────────
+    socket.on("opponent_wants_rematch", () => {
+      dispatch({ type: "OPPONENT_WANTS_REMATCH" });
+    });
+
+    socket.on("rematch_declined", () => {
+      dispatch({ type: "REMATCH_DECLINED" });
+    });
+
+    socket.on("rematch_expired", () => {
+      dispatch({ type: "REMATCH_EXPIRED" });
+    });
+
+    // ── Disconnect / Rejoin ─────────────────────────────────────────────────
     socket.on("opponent_disconnected", () => {
-      alert("Your opponent disconnected.");
       dispatch({ type: "RESET" });
     });
 
-    // Opponent temporarily disconnected
     socket.on("opponent_disconnected_temp", (data) => {
       dispatch({ type: "OPPONENT_DISCONNECTED_TEMP", payload: data });
     });
 
-    // Reconnect countdown
     socket.on("reconnect_countdown", (data) => {
       dispatch({ type: "RECONNECT_COUNTDOWN", payload: data });
     });
 
-    // Opponent reconnected
     socket.on("opponent_reconnected", (data) => {
       dispatch({ type: "OPPONENT_RECONNECTED", payload: data });
     });
 
-    // Opponent forfeited
     socket.on("opponent_forfeited", (data) => {
       dispatch({ type: "OPPONENT_FORFEITED", payload: data });
     });
 
-    // Rejoin success
     socket.on("rejoin_success", (data) => {
       dispatch({ type: "REJOIN_SUCCESS", payload: data });
     });
 
-    // Rejoin failed
-    socket.on("rejoin_failed", (data) => {
-      dispatch({ type: "REJOIN_FAILED", payload: data });
-    });
-
-    socket.on("invalid_word", (data) => {
-      dispatch({ type: "INVALID_WORD" });
+    socket.on("rejoin_failed", () => {
+      dispatch({ type: "REJOIN_FAILED" });
     });
 
     return () => {
@@ -113,10 +131,16 @@ export function useGameSocket() {
       socket.off("opponent_guessed");
       socket.off("round_end");
       socket.off("session_end");
-      socket.off("opponent_disconnected");
       socket.off("invalid_word");
       socket.off("hint_revealed");
       socket.off("hint_already_used");
+      socket.off("sudden_death_countdown");
+      socket.off("sudden_death_start");
+      socket.off("sudden_death_end");
+      socket.off("opponent_wants_rematch");
+      socket.off("rematch_declined");
+      socket.off("rematch_expired");
+      socket.off("opponent_disconnected");
       socket.off("opponent_disconnected_temp");
       socket.off("reconnect_countdown");
       socket.off("opponent_reconnected");

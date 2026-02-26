@@ -228,8 +228,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0,0,0,0.8);
+  background: rgba(0,0,0,0.85);
   animation: fadeIn 0.5s ease forwards;
+  cursor: pointer; /* ← add this */
 }
 
 .anim-winner__confetti {
@@ -288,6 +289,14 @@
   font-size: 1rem;
   color: var(--text-muted);
   letter-spacing: 0.2em;
+}
+
+.anim-winner__dismiss {
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.4);
+  letter-spacing: 0.2em;
+  margin-top: 1rem;
+  animation: fadeIn 1s ease 2s both;
 }
 
 /* ── Shared Keyframes ── */

@@ -13,32 +13,46 @@ const initialState = {
   scores: {},
   shuffledLetters: [],
   wordLength: 0,
-  timeLimit: 369,
+  timeLimit: 127,
   guesses: [],
   opponentGuessCount: 0,
   roundWord: null,
   sessionWinner: null,
   lastPointsEarned: 0,
+  bonuses: [],
   invalidWord: false,
   hint: null,
   hintRevealed: false,
   hintPenalty: 0,
-  timeLimit: 127,
   opponentDisconnected: false,
   reconnectCountdown: null,
-  rejoinFailed: false,
+  // Sudden death
+  isSuddenDeath: false,
+  suddenDeathCountdown: null,
+  suddenDeathWinner: null,
+  suddenDeathWord: null,
+  // Rematch
+  opponentWantsRematch: false,
+  rematchDeclined: false,
+  rematchExpired: false,
+  waitingForRematch: false,
 };
 
 function reducer(state, action) {
   switch (action.type) {
+
     case "SET_USERNAME":
       return { ...state, username: action.payload };
+
     case "SET_MY_ID":
       return { ...state, myId: action.payload };
+
     case "SET_SCREEN":
       return { ...state, screen: action.payload };
+
     case "WAITING":
       return { ...state, screen: "waiting" };
+
     case "MATCH_FOUND":
       return {
         ...state,
@@ -46,11 +60,19 @@ function reducer(state, action) {
         roomId: action.payload.roomId,
         players: action.payload.players,
         totalRounds: action.payload.totalRounds,
+        isSuddenDeath: false,
+        suddenDeathCountdown: null,
+        suddenDeathWinner: null,
+        opponentWantsRematch: false,
+        rematchDeclined: false,
+        rematchExpired: false,
+        waitingForRematch: false,
         scores: action.payload.players.reduce(
           (acc, p) => ({ ...acc, [p.id]: 0 }),
-          {},
+          {}
         ),
       };
+
     case "ROUND_START":
       return {
         ...state,
@@ -66,6 +88,9 @@ function reducer(state, action) {
         opponentGuessCount: 0,
         roundWord: null,
         lastPointsEarned: 0,
+        bonuses: [],
+        invalidWord: false,
+        isSuddenDeath: false,
       };
 
     case "HINT_REVEALED":
@@ -75,6 +100,7 @@ function reducer(state, action) {
         hintPenalty: action.payload.penalty,
         scores: { ...state.scores, [state.myId]: action.payload.totalScore },
       };
+
     case "HINT_ALREADY_USED":
       return { ...state };
 
@@ -87,19 +113,21 @@ function reducer(state, action) {
         ],
         scores: { ...state.scores, [state.myId]: action.payload.totalScore },
         lastPointsEarned: action.payload.pointsEarned,
+        bonuses: action.payload.bonuses || [],
       };
+
     case "INVALID_WORD":
       return { ...state, invalidWord: true };
+
     case "CLEAR_INVALID":
       return { ...state, invalidWord: false };
+
     case "OPPONENT_GUESSED":
       return { ...state, opponentGuessCount: action.payload.guessNumber };
 
     case "UPDATE_SCORES":
-      return {
-        ...state,
-        scores: action.payload.scores,
-      };
+      return { ...state, scores: action.payload.scores };
+
     case "ROUND_END":
       return {
         ...state,
@@ -108,25 +136,68 @@ function reducer(state, action) {
         scores: action.payload.scores,
       };
 
-    case "OPPONENT_DISCONNECTED_TEMP":
+    case "SESSION_END":
       return {
         ...state,
-        opponentDisconnected: true,
-        reconnectCountdown: 30,
+        screen: "sessionEnd",
+        scores: action.payload.scores,
+        sessionWinner: action.payload.winner,
       };
+
+    // ── Sudden Death ──────────────────────────────────────────────────────
+    case "SUDDEN_DEATH_COUNTDOWN":
+      return {
+        ...state,
+        screen: "suddenDeathCountdown",
+        suddenDeathCountdown: action.payload.seconds,
+      };
+
+    case "SUDDEN_DEATH_START":
+      return {
+        ...state,
+        screen: "game",
+        isSuddenDeath: true,
+        shuffledLetters: action.payload.shuffledLetters,
+        wordLength: action.payload.wordLength,
+        hint: action.payload.hint,
+        hintRevealed: false,
+        guesses: [],
+        opponentGuessCount: 0,
+        suddenDeathCountdown: null,
+        invalidWord: false,
+      };
+
+    case "SUDDEN_DEATH_END":
+      return {
+        ...state,
+        screen: "sessionEnd",
+        sessionWinner: action.payload.winner,
+        suddenDeathWord: action.payload.word,
+        scores: action.payload.scores,
+      };
+
+    // ── Rematch ───────────────────────────────────────────────────────────
+    case "OPPONENT_WANTS_REMATCH":
+      return { ...state, opponentWantsRematch: true };
+
+    case "REMATCH_DECLINED":
+      return { ...state, rematchDeclined: true, waitingForRematch: false };
+
+    case "REMATCH_EXPIRED":
+      return { ...state, rematchExpired: true, waitingForRematch: false };
+
+    case "WAITING_FOR_REMATCH":
+      return { ...state, waitingForRematch: true };
+
+    // ── Disconnect / Rejoin ───────────────────────────────────────────────
+    case "OPPONENT_DISCONNECTED_TEMP":
+      return { ...state, opponentDisconnected: true, reconnectCountdown: 30 };
 
     case "RECONNECT_COUNTDOWN":
-      return {
-        ...state,
-        reconnectCountdown: action.payload.seconds,
-      };
+      return { ...state, reconnectCountdown: action.payload.seconds };
 
     case "OPPONENT_RECONNECTED":
-      return {
-        ...state,
-        opponentDisconnected: false,
-        reconnectCountdown: null,
-      };
+      return { ...state, opponentDisconnected: false, reconnectCountdown: null };
 
     case "OPPONENT_FORFEITED":
       return {
@@ -150,25 +221,17 @@ function reducer(state, action) {
         timeLimit: action.payload.timeLimit,
         hint: action.payload.hint,
         guesses: action.payload.guesses,
+        isSuddenDeath: action.payload.isSuddenDeath || false,
         opponentDisconnected: false,
         reconnectCountdown: null,
       };
 
     case "REJOIN_FAILED":
-      return {
-        ...state,
-        screen: "home",
-        opponentDisconnected: false,
-      };
-    case "SESSION_END":
-      return {
-        ...state,
-        screen: "sessionEnd",
-        scores: action.payload.scores,
-        sessionWinner: action.payload.winner,
-      };
+      return { ...state, screen: "home", opponentDisconnected: false };
+
     case "RESET":
       return { ...initialState };
+
     default:
       return state;
   }

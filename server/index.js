@@ -36,7 +36,7 @@ function loadWordList() {
         w.word &&
         w.word.length >= 3 &&
         w.word.length <= 6 &&
-        /^[a-z]+$/.test(w.word),
+        /^[a-z]+$/.test(w.word)
     );
     validWords = new Set(wordList.map((w) => w.word.toLowerCase()));
     console.log(`✅ Loaded ${wordList.length} words from wordlist.json`);
@@ -61,12 +61,12 @@ loadWordList();
 
 // ─── Round Config ─────────────────────────────────────────────────────────────
 const ROUND_CONFIG = {
-  1: { length: 3, time: 127, maxPoints: 3 }, // 2 min 7 sec
-  2: { length: 4, time: 186, maxPoints: 4 }, // 3 min 6 sec
-  3: { length: 5, time: 304, maxPoints: 5 }, // 5 min 4 sec
-  4: { length: 5, time: 304, maxPoints: 5 }, // 5 min 4 sec
-  5: { length: 6, time: 369, maxPoints: 6 }, // 6 min 9 sec
-  6: { length: 6, time: 369, maxPoints: 6 }, // 6 min 9 sec
+  1: { length: 3, time: 127, maxPoints: 3 },
+  2: { length: 4, time: 186, maxPoints: 4 },
+  3: { length: 5, time: 304, maxPoints: 5 },
+  4: { length: 5, time: 304, maxPoints: 5 },
+  5: { length: 6, time: 369, maxPoints: 6 },
+  6: { length: 6, time: 369, maxPoints: 6 },
 };
 
 // ─── Points Calculator ────────────────────────────────────────────────────────
@@ -79,32 +79,25 @@ function calculatePoints(room, playerId, guessNumber) {
   const timeLeft = timeLimit - elapsed;
   const pct = timeLeft / timeLimit;
 
-  // Base points by time remaining percentage
   let basePoints = 0;
-  if (pct >= 0.5)
-    basePoints = maxPoints; // fast
-  else if (pct >= 0.1)
-    basePoints = Math.max(1, Math.floor(maxPoints * 0.6)); // medium
-  else basePoints = Math.max(1, Math.floor(maxPoints * 0.3)); // slow
+  if (pct >= 0.5)      basePoints = maxPoints;
+  else if (pct >= 0.1) basePoints = Math.max(1, Math.floor(maxPoints * 0.6));
+  else                 basePoints = Math.max(1, Math.floor(maxPoints * 0.3));
 
-  // Bonus points
   let bonus = 0;
   const bonuses = [];
 
-  // First try bonus
   if (guessNumber === 1) {
     bonus += 2;
     bonuses.push("⚡ First try! +2");
   }
 
-  // No hint bonus
   const hintUsed = room.session.hintUsed[playerId] || false;
   if (!hintUsed) {
     bonus += 1;
     bonuses.push("💡 No hint! +1");
   }
 
-  // Win streak bonus
   if (!room.streaks) room.streaks = {};
   const streak = room.streaks[playerId] || 0;
   if (streak >= 2) {
@@ -114,18 +107,16 @@ function calculatePoints(room, playerId, guessNumber) {
 
   const total = basePoints + bonus;
   console.log(
-    `🏆 Round ${round} | Player: ${playerId.slice(0, 4)} | Base: ${basePoints} | Bonus: ${bonus} | Total: ${total}`,
+    `🏆 Round ${round} | Player: ${playerId.slice(0, 4)} | Base: ${basePoints} | Bonus: ${bonus} | Total: ${total}`
   );
-
   return { basePoints, bonus, total, bonuses };
 }
 
 // ─── Word Picker ──────────────────────────────────────────────────────────────
-function getRandomWord(round) {
-  const config = ROUND_CONFIG[round] || { length: 4, time: 186 };
-  const filtered = wordList.filter((w) => w.word.length === config.length);
+function getRandomWord(length) {
+  const filtered = wordList.filter((w) => w.word.length === length);
   if (filtered.length === 0) {
-    console.warn(`⚠️ No words found for length ${config.length}`);
+    console.warn(`⚠️ No words found for length ${length}`);
     return wordList[Math.floor(Math.random() * wordList.length)];
   }
   return filtered[Math.floor(Math.random() * filtered.length)];
@@ -147,13 +138,15 @@ function createRoom(player1, player2) {
     scores: { [player1.id]: 0, [player2.id]: 0 },
     streaks: { [player1.id]: 0, [player2.id]: 0 },
     roundActive: false,
+    isSuddenDeath: false,
+    rematchVotes: {},
   };
   return rooms[roomId];
 }
 
 function startRound(room) {
   const config = ROUND_CONFIG[room.currentRound] || { length: 4, time: 186 };
-  const entry = getRandomWord(room.currentRound);
+  const entry = getRandomWord(config.length);
 
   if (!entry || !entry.word) {
     console.error("❌ Could not find a word!");
@@ -183,10 +176,60 @@ function startRound(room) {
   };
   room.roundActive = true;
 
-  console.log(
-    `📖 Round ${room.currentRound}: "${word}" | Time: ${config.time}s | Hint: "${hint}"`,
-  );
+  console.log(`📖 Round ${room.currentRound}: "${word}" | Time: ${config.time}s`);
   return { word, hint, shuffled, timeLimit: config.time };
+}
+
+function startSuddenDeath(room, roomId) {
+  // 4 letter word, hidden timer of 120s
+  const entry = getRandomWord(4);
+  if (!entry || !entry.word) return;
+
+  const word = entry.word;
+  const hint = entry.hint || null;
+  const shuffled = getShuffledLetters(word);
+
+  room.isSuddenDeath = true;
+  room.roundActive = true;
+  room.session.currentWord = word;
+  room.session.currentHint = hint;
+  room.session.shuffledLetters = shuffled;
+  room.session.roundStartTime = Date.now();
+  room.session.timeLimit = 120; // hidden from players
+  room.session.playerGuesses = {
+    [room.players[0].id]: [],
+    [room.players[1].id]: [],
+  };
+  room.session.roundFinished = {
+    [room.players[0].id]: false,
+    [room.players[1].id]: false,
+  };
+  room.session.hintUsed = {
+    [room.players[0].id]: false,
+    [room.players[1].id]: false,
+  };
+
+  console.log(`💀 Sudden Death: "${word}"`);
+
+  io.to(roomId).emit("sudden_death_start", {
+    shuffledLetters: shuffled,
+    wordLength: word.length,
+    hint: hint,
+  });
+
+  // Secret timer — if nobody guesses in 120s → true draw
+  room.suddenDeathTimer = setTimeout(() => {
+    if (room.roundActive) {
+      room.roundActive = false;
+      io.to(roomId).emit("sudden_death_end", {
+        word,
+        winner: null, // true draw
+        scores: room.scores,
+        players: room.players,
+      });
+      delete rooms[roomId];
+    }
+  }, 120000);
 }
 
 // ─── Socket Events ────────────────────────────────────────────────────────────
@@ -200,7 +243,7 @@ io.on("connection", (socket) => {
       const opponent = waitingRoom.players.shift();
       const room = createRoom(
         { id: opponent.id, username: opponent.username },
-        { id: socket.id, username: socket.username },
+        { id: socket.id, username: socket.username }
       );
 
       socket.join(room.id);
@@ -236,10 +279,10 @@ io.on("connection", (socket) => {
     const currentWord = room.session.currentWord;
     const guesses = room.session.playerGuesses[playerId];
 
-    if (!guesses || guesses.length >= 4) return;
+    // Sudden death has unlimited guesses
+    if (!room.isSuddenDeath && (!guesses || guesses.length >= 4)) return;
     if (room.session.roundFinished[playerId]) return;
 
-    // Validate guess
     if (!validWords.has(guess.toLowerCase())) {
       socket.emit("invalid_word", { guess });
       return;
@@ -249,26 +292,46 @@ io.on("connection", (socket) => {
     guesses.push({ guess: guess.toLowerCase(), result });
 
     const isCorrect = result.every((r) => r.status === "correct");
-    const isLastGuess = guesses.length >= 4;
+    const isLastGuess = !room.isSuddenDeath && guesses.length >= 4;
 
+    // ── Sudden Death win ──
+    if (room.isSuddenDeath && isCorrect) {
+      room.roundActive = false;
+      if (room.suddenDeathTimer) clearTimeout(room.suddenDeathTimer);
+
+      socket.emit("guess_result", {
+        guess: guess.toLowerCase(),
+        result,
+        guessNumber: guesses.length,
+        isCorrect: true,
+        pointsEarned: 0,
+        bonuses: [],
+        totalScore: room.scores[playerId],
+      });
+
+      const winner = room.players.find((p) => p.id === playerId);
+      io.to(roomId).emit("sudden_death_end", {
+        word: currentWord,
+        winner,
+        scores: room.scores,
+        players: room.players,
+      });
+      delete rooms[roomId];
+      return;
+    }
+
+    // ── Normal round ──
     let pointsEarned = 0;
     let bonuses = [];
 
     if (isCorrect) {
-      const { total, bonuses: earnedBonuses } = calculatePoints(
-        room,
-        playerId,
-        guesses.length,
-      );
+      const { total, bonuses: earnedBonuses } = calculatePoints(room, playerId, guesses.length);
       pointsEarned = total;
       bonuses = earnedBonuses;
       room.scores[playerId] = (room.scores[playerId] || 0) + pointsEarned;
-
-      // Update win streak
       if (!room.streaks) room.streaks = {};
       room.streaks[playerId] = (room.streaks[playerId] || 0) + 1;
     } else if (isLastGuess) {
-      // Reset streak on failed round
       if (!room.streaks) room.streaks = {};
       room.streaks[playerId] = 0;
     }
@@ -298,12 +361,9 @@ io.on("connection", (socket) => {
 
   socket.on("time_up", ({ roomId }) => {
     const room = rooms[roomId];
-    if (!room) return;
-
-    // Reset streak on time up
+    if (!room || room.isSuddenDeath) return;
     if (!room.streaks) room.streaks = {};
     room.streaks[socket.id] = 0;
-
     room.session.roundFinished[socket.id] = true;
     const bothDone = Object.values(room.session.roundFinished).every(Boolean);
     if (bothDone) endRound(room, roomId);
@@ -312,25 +372,20 @@ io.on("connection", (socket) => {
   socket.on("request_hint", ({ roomId }) => {
     const room = rooms[roomId];
     if (!room) return;
-
     const playerId = socket.id;
 
     if (room.session.hintUsed[playerId]) {
       socket.emit("hint_already_used");
       return;
     }
-
     room.session.hintUsed[playerId] = true;
 
     const elapsed = (Date.now() - room.session.roundStartTime) / 1000;
     const timeLeft = room.session.timeLimit - elapsed;
-    const penalty = timeLeft > 60 ? 1 : 0;
+    const penalty = !room.isSuddenDeath && timeLeft > 60 ? 1 : 0;
 
     if (penalty > 0) {
-      room.scores[playerId] = Math.max(
-        0,
-        (room.scores[playerId] || 0) - penalty,
-      );
+      room.scores[playerId] = Math.max(0, (room.scores[playerId] || 0) - penalty);
     }
 
     socket.emit("hint_revealed", {
@@ -340,6 +395,76 @@ io.on("connection", (socket) => {
     });
   });
 
+  // ── Rematch ──────────────────────────────────────────────────────────────
+  socket.on("request_rematch", ({ roomId }) => {
+    // Create a pending rematch room entry if needed
+    if (!rooms[roomId]) {
+      // Store rematch request temporarily
+      if (!global.rematchRequests) global.rematchRequests = {};
+      global.rematchRequests[roomId] = global.rematchRequests[roomId] || {
+        players: [],
+        sockets: [],
+        timer: null,
+      };
+
+      const req = global.rematchRequests[roomId];
+
+      // Avoid duplicate votes
+      if (req.players.includes(socket.id)) return;
+      req.players.push(socket.id);
+      req.sockets.push(socket);
+
+      // Notify the other player
+      socket.to(roomId).emit("opponent_wants_rematch");
+
+      if (req.players.length === 2) {
+        // Both agreed — create new room
+        clearTimeout(req.timer);
+        const [s1, s2] = req.sockets;
+        const newRoom = createRoom(
+          { id: s1.id, username: s1.username },
+          { id: s2.id, username: s2.username }
+        );
+        s1.join(newRoom.id);
+        s2.join(newRoom.id);
+
+        io.to(newRoom.id).emit("match_found", {
+          roomId: newRoom.id,
+          players: newRoom.players,
+          totalRounds: newRoom.totalRounds,
+        });
+
+        setTimeout(() => {
+          const { word, hint, shuffled, timeLimit } = startRound(newRoom);
+          io.to(newRoom.id).emit("round_start", {
+            round: newRoom.currentRound,
+            shuffledLetters: shuffled,
+            wordLength: word.length,
+            timeLimit,
+            hint,
+          });
+        }, 3000);
+
+        delete global.rematchRequests[roomId];
+      } else {
+        // Start 30s timeout for rematch
+        req.timer = setTimeout(() => {
+          socket.emit("rematch_expired");
+          delete global.rematchRequests[roomId];
+        }, 30000);
+      }
+    }
+  });
+
+  socket.on("decline_rematch", ({ roomId }) => {
+    socket.to(roomId).emit("rematch_declined");
+    if (global.rematchRequests?.[roomId]) {
+      clearTimeout(global.rematchRequests[roomId].timer);
+      delete global.rematchRequests[roomId];
+    }
+  });
+
+  // ── Rejoin ────────────────────────────────────────────────────────────────
   socket.on("rejoin_room", ({ roomId, username }) => {
     const room = rooms[roomId];
     if (!room) {
@@ -347,20 +472,15 @@ io.on("connection", (socket) => {
       return;
     }
 
-    // Find the disconnected player slot
     const playerIndex = room.players.findIndex((p) => p.username === username);
-
     if (playerIndex === -1) {
       socket.emit("rejoin_failed", { message: "Player not found in room!" });
       return;
     }
 
     const oldId = room.players[playerIndex].id;
-
-    // Update player ID to new socket ID
     room.players[playerIndex].id = socket.id;
 
-    // Update all session references to old ID
     if (room.scores[oldId] !== undefined) {
       room.scores[socket.id] = room.scores[oldId];
       delete room.scores[oldId];
@@ -382,22 +502,16 @@ io.on("connection", (socket) => {
       delete room.session.hintUsed[oldId];
     }
 
-    // Clear disconnected flag
     if (room.disconnected) delete room.disconnected[oldId];
-
-    // Clear grace period timer
     if (room.gracePeriodTimer) {
       clearTimeout(room.gracePeriodTimer);
       room.gracePeriodTimer = null;
     }
 
-    // Rejoin the socket room
     socket.join(roomId);
     socket.username = username;
-
     console.log(`✅ Player ${username} rejoined room ${roomId}`);
 
-    // Send full game state back to rejoining player
     socket.emit("rejoin_success", {
       roomId,
       round: room.currentRound,
@@ -410,9 +524,9 @@ io.on("connection", (socket) => {
       hint: room.session.currentHint,
       guesses: room.session.playerGuesses[socket.id] || [],
       roundStartTime: room.session.roundStartTime,
+      isSuddenDeath: room.isSuddenDeath,
     });
 
-    // Notify opponent
     socket.to(roomId).emit("opponent_reconnected", {
       message: "✅ Opponent reconnected — game continues!",
     });
@@ -425,22 +539,16 @@ io.on("connection", (socket) => {
     for (const [roomId, room] of Object.entries(rooms)) {
       const playerIndex = room.players.findIndex((p) => p.id === socket.id);
       if (playerIndex !== -1) {
-        console.log(
-          `⏳ Player ${socket.id.slice(0, 4)} disconnected — starting 30s grace period`,
-        );
+        console.log(`⏳ Player ${socket.id.slice(0, 4)} disconnected — 30s grace period`);
 
-        // Mark player as disconnected but don't delete room yet
         room.disconnected = room.disconnected || {};
         room.disconnected[socket.id] = true;
 
-        // Notify opponent
         io.to(roomId).emit("opponent_disconnected_temp", {
-          message:
-            "⚠️ Opponent disconnected — waiting 30 seconds for them to reconnect...",
+          message: "⚠️ Opponent disconnected — waiting 30 seconds...",
           grace: 30,
         });
 
-        // Start grace period countdown
         let countdown = 30;
         const countdownInterval = setInterval(() => {
           countdown--;
@@ -448,13 +556,10 @@ io.on("connection", (socket) => {
           if (countdown <= 0) clearInterval(countdownInterval);
         }, 1000);
 
-        // Grace period timer — 30 seconds
         room.gracePeriodTimer = setTimeout(() => {
           clearInterval(countdownInterval);
-          // If player still hasn't rejoined delete the room
           if (room.disconnected?.[socket.id]) {
             console.log(`💀 Grace period expired — ending game`);
-            // Find the remaining player as winner
             const winner = room.players.find((p) => p.id !== socket.id);
             io.to(roomId).emit("opponent_forfeited", {
               winner,
@@ -484,20 +589,34 @@ function endRound(room, roomId) {
 
   if (room.currentRound >= room.totalRounds) {
     const [p1, p2] = room.players;
-    const winner =
-      room.scores[p1.id] > room.scores[p2.id]
+    const isDraw = room.scores[p1.id] === room.scores[p2.id];
+    const winner = isDraw
+      ? null
+      : room.scores[p1.id] > room.scores[p2.id]
         ? p1
-        : room.scores[p2.id] > room.scores[p1.id]
-          ? p2
-          : null;
+        : p2;
 
     setTimeout(() => {
-      io.to(roomId).emit("session_end", {
-        scores: room.scores,
-        players: room.players,
-        winner,
-      });
-      delete rooms[roomId];
+      if (isDraw) {
+        // Trigger sudden death
+        io.to(roomId).emit("sudden_death_countdown", { seconds: 10 });
+        let cd = 10;
+        const cdInterval = setInterval(() => {
+          cd--;
+          io.to(roomId).emit("sudden_death_countdown", { seconds: cd });
+          if (cd <= 0) {
+            clearInterval(cdInterval);
+            startSuddenDeath(room, roomId);
+          }
+        }, 1000);
+      } else {
+        io.to(roomId).emit("session_end", {
+          scores: room.scores,
+          players: room.players,
+          winner,
+        });
+        delete rooms[roomId];
+      }
     }, 5000);
   } else {
     room.currentRound++;
@@ -507,8 +626,8 @@ function endRound(room, roomId) {
         round: room.currentRound,
         shuffledLetters: shuffled,
         wordLength: word.length,
-        timeLimit: timeLimit,
-        hint: hint,
+        timeLimit,
+        hint,
       });
     }, 5000);
   }
@@ -516,7 +635,7 @@ function endRound(room, roomId) {
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
 app.get("/health", (req, res) =>
-  res.json({ status: "ok", words: wordList.length }),
+  res.json({ status: "ok", words: wordList.length })
 );
 
 const PORT = process.env.PORT || 4000;

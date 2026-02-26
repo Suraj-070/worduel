@@ -84,9 +84,22 @@ export function LastGuessTension({ show }) {
 
 // ── Session Winner ────────────────────────────────────────────────────────────
 export function SessionWinner({ winner, me }) {
+  const [visible, setVisible] = useState(true);
   const isWinner = winner?.id === me?.id;
+
+  // Auto dismiss after 4 seconds
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(false), 4000);
+    return () => clearTimeout(t);
+  }, []);
+
+  if (!visible) return null;
+
   return (
-    <div className="anim-winner">
+    <div
+      className="anim-winner"
+      onClick={() => setVisible(false)} // click to dismiss
+    >
       <div className="anim-winner__confetti">
         {isWinner && Array(40).fill(null).map((_, i) => (
           <div key={i} className="anim-winner__piece" style={{
@@ -114,6 +127,7 @@ export function SessionWinner({ winner, me }) {
             <div className="anim-winner__sub">Better luck next time!</div>
           </>
         )}
+        <div className="anim-winner__dismiss">tap to continue</div>
       </div>
     </div>
   );

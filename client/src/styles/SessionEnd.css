@@ -1,106 +1,37 @@
-/* ── Round End ── */
-.round-end {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg);
-  padding: 2rem;
-}
-
-.round-end__card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 2.5rem;
-  text-align: center;
-  max-width: 440px;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-.round-end__label {
-  font-size: 0.65rem;
-  letter-spacing: 0.3em;
-  color: var(--text-muted);
-}
-
-.round-end__word {
-  font-family: var(--font-display);
-  font-size: 3.5rem;
-  color: var(--accent);
-  letter-spacing: 0.05em;
-}
-
-.round-end__points {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--green);
-}
-
-.round-end__points--zero { color: var(--text-muted); }
-
-.round-end__scores {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  border-top: 1px solid var(--border);
-  padding-top: 1.25rem;
-}
-
-.round-end__score-block {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.round-end__player-name {
-  font-size: 0.7rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-
-.round-end__player-score {
-  font-family: var(--font-display);
-  font-size: 2.5rem;
-  color: var(--text);
-}
-
-.round-end__vs {
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-  color: var(--border);
-}
-
-.round-end__next {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  letter-spacing: 0.1em;
-}
-
-/* ── Session End ── */
+/* SessionEnd.css */
 .session-end {
-  min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2.5rem;
-  background: var(--bg);
+  min-height: 100vh;
+  gap: 2rem;
   padding: 2rem;
-  text-align: center;
 }
 
 .session-end__result {
-  font-family: var(--font-display);
-  font-size: clamp(3rem, 10vw, 6rem);
-  color: var(--accent);
-  letter-spacing: 0.05em;
+  font-family: var(--font-display, monospace);
+  font-size: 3.5rem;
+  letter-spacing: 0.2em;
+  animation: resultPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes resultPop {
+  0%   { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.session-end__result--win  { color: #FFD700; text-shadow: 0 0 30px gold; }
+.session-end__result--lose { color: #666; }
+.session-end__result--draw { color: #1a4aff; text-shadow: 0 0 20px #1a4aff; }
+
+.session-end__sd-word {
+  font-size: 0.9rem;
+  color: #ff4444;
+  letter-spacing: 0.1em;
+  border: 1px dashed #ff4444;
+  padding: 0.5rem 1.5rem;
+  border-radius: 4px;
 }
 
 .session-end__scores {
@@ -113,56 +44,152 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 1.5rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
+  gap: 0.4rem;
+  padding: 1.5rem 2rem;
+  border: 1px solid #222;
+  border-radius: 8px;
   min-width: 140px;
-  transition: border-color 0.3s;
+  transition: all 0.3s;
 }
 
 .session-end__block--winner {
-  border-color: var(--accent);
-  box-shadow: 0 0 20px rgba(232, 197, 71, 0.15);
+  border-color: #FFD700;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
 }
 
 .session-end__name {
-  font-size: 0.7rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
+  font-size: 0.8rem;
+  color: var(--text-muted, #888);
   letter-spacing: 0.1em;
 }
 
 .session-end__pts {
-  font-family: var(--font-display);
+  font-family: var(--font-display, monospace);
   font-size: 3rem;
-  color: var(--text);
+  color: var(--text, #fff);
+  line-height: 1;
 }
 
 .session-end__pts-label {
-  font-size: 0.65rem;
-  color: var(--text-muted);
+  font-size: 0.7rem;
+  color: var(--text-muted, #888);
   letter-spacing: 0.15em;
 }
 
 .session-end__divider {
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-  color: var(--border);
+  font-family: var(--font-display, monospace);
+  font-size: 1.2rem;
+  color: #444;
+  letter-spacing: 0.2em;
+}
+
+/* Action buttons */
+.session-end__actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .session-end__btn {
-  background: var(--accent);
-  color: #000;
-  border: none;
-  padding: 1rem 3rem;
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-  letter-spacing: 0.1em;
+  padding: 0.9rem 1.8rem;
   border-radius: 4px;
-  transition: transform 0.15s, background 0.2s;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  transition: all 0.15s;
+  cursor: pointer;
 }
 
-.session-end__btn:hover  { background: #f5d45a; transform: translateY(-2px); }
-.session-end__btn:active { transform: translateY(0); }
+.session-end__btn--rematch {
+  background: #1a4aff;
+  border: 2px solid #1a4aff;
+  color: #fff;
+}
+.session-end__btn--rematch:hover {
+  background: #0a3aff;
+  box-shadow: 0 0 20px rgba(26, 74, 255, 0.5);
+}
+
+.session-end__btn--new {
+  background: transparent;
+  border: 2px solid #444;
+  color: #aaa;
+}
+.session-end__btn--new:hover {
+  border-color: #fff;
+  color: #fff;
+}
+
+.session-end__btn--home {
+  background: transparent;
+  border: 2px solid #333;
+  color: #666;
+}
+.session-end__btn--home:hover {
+  border-color: #888;
+  color: #aaa;
+}
+
+.session-end__btn--accept {
+  background: #4caf7d;
+  border: 2px solid #4caf7d;
+  color: #fff;
+}
+.session-end__btn--accept:hover {
+  background: #3a9f6d;
+}
+
+.session-end__btn--decline {
+  background: transparent;
+  border: 2px solid #ff4444;
+  color: #ff4444;
+}
+.session-end__btn--decline:hover {
+  background: rgba(255, 68, 68, 0.1);
+}
+
+/* Status messages */
+.session-end__status {
+  font-size: 0.8rem;
+  color: #aaa;
+  letter-spacing: 0.1em;
+  padding: 0.6rem 1.2rem;
+  border: 1px dashed #333;
+  border-radius: 4px;
+  animation: fadeIn 0.3s ease;
+}
+
+.session-end__status--bad {
+  color: #ff4444;
+  border-color: #ff4444;
+}
+
+/* Rematch request */
+.session-end__rematch-request {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem 2rem;
+  border: 1px solid #1a4aff;
+  border-radius: 8px;
+  background: rgba(26, 74, 255, 0.05);
+  animation: fadeIn 0.3s ease;
+}
+
+.session-end__rematch-request p {
+  font-size: 0.9rem;
+  color: #fff;
+  letter-spacing: 0.05em;
+}
+
+.session-end__rematch-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
